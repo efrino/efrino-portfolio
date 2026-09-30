@@ -5,87 +5,216 @@ import { mountChat, chatMarkup } from './chat.js';
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
 
-/* ---------- 3D background: morphing core + orbiting particle rings ---------- */
+/* ---------- 3D background: particles that morph into a shape per section ---------- */
+const N = 12000;
+
+// Each generator fills N points (x, y, z) roughly within a radius of ~3.
+const rnd = (a = 1) => (Math.random() - 0.5) * 2 * a;
+const SHAPES = {
+  galaxy(i) {
+    const arm = i % 3, r = Math.pow(Math.random(), 0.7) * 3.4, a = arm * (Math.PI * 2 / 3) + r * 1.15;
+    const s = 0.35 * (1 - r / 5);
+    return [Math.cos(a) * r + rnd(s), rnd(0.12 + s * 0.4), Math.sin(a) * r + rnd(s)];
+  },
+  gear(i) {
+    const teeth = 14, z = rnd(0.35);
+    if (i % 5 === 0) { const a = Math.random() * Math.PI * 2, r = 0.7 + Math.random() * 0.25; return [Math.cos(a) * r, Math.sin(a) * r, z]; }
+    const a = Math.random() * Math.PI * 2;
+    const tooth = (Math.floor(a / (Math.PI * 2) * teeth * 2) % 2) === 0;
+    const outer = tooth ? 3.0 : 2.55, r = 1.9 + Math.random() * (outer - 1.9);
+    return [Math.cos(a) * r, Math.sin(a) * r, z];
+  },
+  phone(i) {
+    const w = 1.55, h = 3.1, z = rnd(0.12);
+    const k = i % 4;
+    if (k === 0) { // rounded outline
+      const t = Math.random() * 2 * (w + h) * 2, per = 2 * (w + h);
+      let x, y; const u = (t % per);
+      if (u < 2 * w) { x = -w + u; y = h; } else if (u < 2 * w + 2 * h) { x = w; y = h - (u - 2 * w); }
+      else if (u < 4 * w + 2 * h) { x = w - (u - 2 * w - 2 * h); y = -h; } else { x = -w; y = -h + (u - 4 * w - 2 * h); }
+      return [x + rnd(0.03), y + rnd(0.03), z];
+    }
+    if (k === 1) { const r = Math.random() * 0.22, a = Math.random() * 6.283; return [Math.cos(a) * r, -h + 0.45 + Math.sin(a) * r, z]; }
+    // screen content: rows of "cards"
+    const row = Math.floor(Math.random() * 6), y = h - 0.55 - row * 0.85 - Math.random() * 0.5;
+    return [rnd(w - 0.3), y, z];
+  },
+  brain(i) {
+    // Neural net: nodes on a noisy sphere plus links between neighbours.
+    const layers = 5, perLayer = 8, L = i % layers, n = Math.floor(i / layers) % perLayer;
+    const node = (l, m) => [(l - 2) * 1.3, ((m + 0.5) / perLayer - 0.5) * 5 * (1 - Math.abs(l - 2) * 0.12), Math.sin(l * 1.7 + m) * 0.6];
+    if (i % 3 === 0) { const p = node(L, n); return [p[0] + rnd(0.12), p[1] + rnd(0.12), p[2] + rnd(0.12)]; }
+    if (L === layers - 1) { const p = node(L, n); return [p[0] + rnd(0.15), p[1] + rnd(0.15), p[2] + rnd(0.15)]; }
+    const a = node(L, n), b = node(L + 1, Math.floor(Math.random() * perLayer)), t = Math.random();
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  },
+  globe(i) {
+    if (i % 4 === 0) { const a = Math.random() * 6.283, r = 3.4 + rnd(0.05), tilt = (i % 8 === 0) ? 0.5 : -0.4;
+      return [Math.cos(a) * r, Math.sin(a) * r * Math.sin(tilt), Math.sin(a) * r * Math.cos(tilt)]; }
+    // latitude / longitude lines
+    const lines = 12, onLat = i % 2, k = Math.floor(Math.random() * lines), t = Math.random() * 6.283, R = 2.3;
+    if (onLat) { const phi = ((k + 0.5) / lines) * Math.PI; return [Math.sin(phi) * Math.cos(t) * R, Math.cos(phi) * R, Math.sin(phi) * Math.sin(t) * R]; }
+    const th = (k / lines) * Math.PI; return [Math.sin(t) * Math.cos(th) * R, Math.cos(t) * R, Math.sin(t) * Math.sin(th) * R];
+  },
+  helix(i) {
+    // DNA double helix: two strands plus base-pair rungs.
+    const t = Math.random(), y = (t - 0.5) * 6.5, a = t * Math.PI * 6, R = 1.3;
+    if (i % 3 === 2) { const u = Math.round(t * 40) / 40, yy = (u - 0.5) * 6.5, aa = u * Math.PI * 6, k = rnd(1);
+      return [Math.cos(aa) * R * k, yy + rnd(0.02), Math.sin(aa) * R * k]; }
+    const s = i % 3 ? Math.PI : 0;
+    return [Math.cos(a + s) * R + rnd(0.08), y + rnd(0.08), Math.sin(a + s) * R + rnd(0.08)];
+  },
+  portal(i) {
+    // Thick ring with a swirl of particles flowing inward.
+    if (i % 4 === 0) { const a = Math.random() * 6.283, r = Math.random() * 4.6; return [Math.cos(a + r) * r, Math.sin(a + r) * r * 0.62, rnd(0.3) - 1.5]; }
+    const a = Math.random() * 6.283, tube = Math.random() * 6.283, tr = 0.25 * Math.sqrt(Math.random());
+    const R = 5.2 + Math.cos(tube) * tr;
+    return [Math.cos(a) * R, Math.sin(a) * R * 0.62, Math.sin(tube) * tr - 1.5];
+  },
+  cubes(i) {
+    const g = 4, c = i % (g * g * g), cx = c % g, cy = Math.floor(c / g) % g, cz = Math.floor(c / g / g);
+    const s = 0.28, e = Math.floor(Math.random() * 12), t = rnd(s);
+    const edges = [[t, s, s], [t, -s, s], [t, s, -s], [t, -s, -s], [s, t, s], [-s, t, s], [s, t, -s], [-s, t, -s], [s, s, t], [-s, s, t], [s, -s, t], [-s, -s, t]];
+    const p = edges[e];
+    return [(cx - 1.5) * 1.1 + p[0], (cy - 1.5) * 1.1 + p[1], (cz - 1.5) * 1.1 + p[2]];
+  },
+};
+
+const scale = (a, k) => { for (let i = 0; i < a.length; i++) a[i] *= k; return a; };
+const fromGen = gen => { const a = new Float32Array(N * 3); for (let i = 0; i < N; i++) a.set(gen(i), i * 3); return a; };
+
 function scene3d() {
   const canvas = $('#bg3d');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x07080d, 0.045);
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-  camera.position.set(0, 0, 9);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+  camera.position.set(0, 0, 10);
 
-  // Core: icosahedron whose vertices are displaced by noise in a shader.
-  const coreMat = new THREE.ShaderMaterial({
-    wireframe: true, transparent: true,
-    uniforms: { uTime: { value: 0 }, uA: { value: new THREE.Color(0x7c5cff) }, uB: { value: new THREE.Color(0x22d3ee) } },
+  const targets = {
+    top: fromGen(SHAPES.galaxy),
+    about: fromGen(SHAPES.helix),
+    work: fromGen(SHAPES.gear),
+    projects: scale(fromGen(SHAPES.phone), 0.72),
+    ai: scale(fromGen(SHAPES.brain), 0.72),
+    eco: fromGen(SHAPES.globe),
+    skills: fromGen(SHAPES.cubes),
+    contact: fromGen(SHAPES.portal),
+  };
+
+  const geo = new THREE.BufferGeometry();
+  const from = targets.top.slice(), to = targets.top.slice();
+  const seed = new Float32Array(N);
+  for (let i = 0; i < N; i++) seed[i] = Math.random();
+  geo.setAttribute('position', new THREE.BufferAttribute(from, 3));
+  geo.setAttribute('aTo', new THREE.BufferAttribute(to, 3));
+  geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: {
+      uT: { value: 0 }, uMix: { value: 1 }, uMouse: { value: new THREE.Vector3(99, 99, 0) },
+      uSize: { value: 34 * renderer.getPixelRatio() }, uAlpha: { value: 1 },
+      uA: { value: new THREE.Color(0x7c5cff) }, uB: { value: new THREE.Color(0x22d3ee) },
+    },
     vertexShader: `
-      uniform float uTime; varying float vD;
-      vec3 hash(vec3 p){ p=vec3(dot(p,vec3(127.1,311.7,74.7)),dot(p,vec3(269.5,183.3,246.1)),dot(p,vec3(113.5,271.9,124.6))); return fract(sin(p)*43758.5453)*2.-1.; }
-      float noise(vec3 p){ vec3 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);
-        return mix(mix(mix(dot(hash(i),f),dot(hash(i+vec3(1,0,0)),f-vec3(1,0,0)),u.x),mix(dot(hash(i+vec3(0,1,0)),f-vec3(0,1,0)),dot(hash(i+vec3(1,1,0)),f-vec3(1,1,0)),u.x),u.y),
-                   mix(mix(dot(hash(i+vec3(0,0,1)),f-vec3(0,0,1)),dot(hash(i+vec3(1,0,1)),f-vec3(1,0,1)),u.x),mix(dot(hash(i+vec3(0,1,1)),f-vec3(0,1,1)),dot(hash(i+vec3(1,1,1)),f-vec3(1,1,1)),u.x),u.y),u.z); }
-      void main(){ float d=noise(normal*1.6+uTime*.35); vD=d; vec3 p=position+normal*d*.55;
-        gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.); }`,
-    fragmentShader: `uniform vec3 uA,uB; varying float vD; void main(){ gl_FragColor=vec4(mix(uA,uB,vD*.5+.5),.55); }`,
+      attribute vec3 aTo; attribute float aSeed;
+      uniform float uT, uMix, uSize; uniform vec3 uMouse;
+      varying float vSeed; varying float vGlow;
+      void main() {
+        // Staggered morph with a swirl in the middle of the transition.
+        float m = smoothstep(aSeed * .35, .65 + aSeed * .35, uMix);
+        vec3 p = mix(position, aTo, m);
+        float mid = sin(m * 3.14159);
+        float a = mid * (aSeed - .5) * 2.;
+        p.xz = mat2(cos(a), -sin(a), sin(a), cos(a)) * p.xz;
+        p += normalize(p + .001) * mid * (.6 + aSeed);
+        // Idle breathing.
+        p += .04 * vec3(sin(uT * 1.3 + aSeed * 40.), cos(uT * 1.1 + aSeed * 30.), sin(uT * .9 + aSeed * 20.));
+        vec4 wp = modelMatrix * vec4(p, 1.);
+        // Push particles away from the cursor.
+        vec3 d = wp.xyz - uMouse; float dist = length(d.xy);
+        float f = smoothstep(1.1, 0., dist);
+        wp.xyz += normalize(d + .0001) * f * .55;
+        vGlow = f;
+        vec4 mv = viewMatrix * wp;
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = uSize * (.35 + aSeed * .65) / -mv.z;
+        vSeed = aSeed;
+      }`,
+    fragmentShader: `
+      uniform vec3 uA, uB; uniform float uAlpha;
+      varying float vSeed; varying float vGlow;
+      void main() {
+        float d = length(gl_PointCoord - .5);
+        float a = smoothstep(.5, .0, d);
+        vec3 c = mix(uA, uB, vSeed) + vGlow * .6;
+        gl_FragColor = vec4(c, a * (.55 + vGlow * .45) * uAlpha);
+      }`,
   });
-  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(2.1, 12), coreMat);
+  const points = new THREE.Points(geo, mat);
   const group = new THREE.Group();
-  group.add(core);
-
-  // Inner glow sphere
-  group.add(new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 32), new THREE.MeshBasicMaterial({ color: 0x7c5cff, transparent: true, opacity: 0.08 })));
-
-  // Rings of particles
-  const rings = [];
-  [[3.4, 0.4, 0x22d3ee], [4.3, -0.6, 0x7c5cff], [5.4, 1.1, 0xffffff]].forEach(([r, tilt, color], k) => {
-    const n = 900, pos = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, rr = r + (Math.random() - 0.5) * 0.5;
-      pos.set([Math.cos(a) * rr, (Math.random() - 0.5) * 0.15, Math.sin(a) * rr], i * 3);
-    }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const pts = new THREE.Points(g, new THREE.PointsMaterial({ color, size: 0.03 + k * 0.006, transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending }));
-    pts.rotation.x = Math.PI / 2 + tilt; pts.rotation.z = tilt;
-    rings.push(pts); group.add(pts);
-  });
+  group.add(points);
   scene.add(group);
 
-  // Deep starfield
-  const sn = 2500, sp = new Float32Array(sn * 3);
-  for (let i = 0; i < sn * 3; i++) sp[i] = (Math.random() - 0.5) * 60;
-  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-  const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0x8b90a5, size: 0.04, transparent: true, opacity: 0.6 }));
-  scene.add(stars);
+  // Faint background dust.
+  const dn = 1500, dp = new Float32Array(dn * 3);
+  for (let i = 0; i < dn * 3; i++) dp[i] = rnd(25);
+  const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dp, 3));
+  const dust = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0x8b90a5, size: 0.03, transparent: true, opacity: 0.5 }));
+  scene.add(dust);
 
-  const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
-  addEventListener('pointermove', e => { mouse.tx = e.clientX / innerWidth - 0.5; mouse.ty = e.clientY / innerHeight - 0.5; });
+  // Morph to a new target, starting from wherever the particles are now.
+  let current = 'top', mixT = 1, morphStart = 0;
+  const morph = key => {
+    if (!targets[key] || key === current) return;
+    const k = mat.uniforms.uMix.value;
+    for (let i = 0; i < N * 3; i++) from[i] = from[i] + (to[i] - from[i]) * Math.min(1, k);
+    to.set(targets[key]);
+    geo.attributes.position.needsUpdate = true; geo.attributes.aTo.needsUpdate = true;
+    mixT = 0; morphStart = performance.now(); current = key;
+  };
+  const sio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) morph(e.target.id || 'top'); }), { rootMargin: '-45% 0px -50% 0px' });
+  document.querySelectorAll('main > section').forEach(s => sio.observe(s));
 
+  const mouse = new THREE.Vector2(9, 9), target = new THREE.Vector2(), ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), hit = new THREE.Vector3();
+  addEventListener('pointermove', e => { mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); });
+  addEventListener('pointerleave', () => mouse.set(9, 9));
+
+  const wide = () => innerWidth > 900;
   const resize = () => {
     renderer.setSize(innerWidth, innerHeight, false);
     camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-    group.position.x = innerWidth > 900 ? 3.2 : 0;
+    camera.position.z = wide() ? 10 : 13;
   };
   addEventListener('resize', resize); resize();
 
   const clock = new THREE.Clock();
-  let visible = true;
-  document.addEventListener('visibilitychange', () => visible = !document.hidden);
   (function loop() {
     requestAnimationFrame(loop);
-    if (!visible) return;
-    const t = clock.getElapsedTime(), scroll = scrollY / innerHeight;
-    mouse.x += (mouse.tx - mouse.x) * 0.05; mouse.y += (mouse.ty - mouse.y) * 0.05;
-    coreMat.uniforms.uTime.value = reduced ? 0 : t;
-    group.rotation.y = t * 0.08 + mouse.x * 0.8;
-    group.rotation.x = mouse.y * 0.5 + scroll * 0.3;
-    rings.forEach((r, i) => r.rotation.y = t * (0.05 + i * 0.03) * (i % 2 ? -1 : 1));
-    // Scroll pushes the core back and fades it so content stays readable.
-    group.position.z = -scroll * 3;
-    coreMat.opacity = Math.max(0.12, 0.55 - scroll * 0.25);
-    stars.rotation.y = t * 0.01; stars.position.y = scroll * 1.5;
-    camera.position.x = mouse.x * 0.6; camera.position.y = -mouse.y * 0.6;
-    camera.lookAt(0, 0, 0);
+    if (document.hidden) return;
+    const t = clock.getElapsedTime();
+    // Wall-clock based so the morph completes even at low frame rates.
+    mixT = Math.min(1, (performance.now() - morphStart) / 1800);
+    mat.uniforms.uMix.value = reduced ? 1 : mixT;
+    mat.uniforms.uT.value = reduced ? 0 : t;
+    target.lerp(mouse, 0.08);
+
+    ray.setFromCamera(target, camera);
+    if (ray.ray.intersectPlane(plane, hit)) mat.uniforms.uMouse.value.copy(hit); else mat.uniforms.uMouse.value.set(99, 99, 0);
+
+    // Text shapes face the camera; others spin slowly.
+    const flat = ['work', 'projects', 'ai', 'contact'].includes(current);
+    const ry = flat ? target.x * 0.35 : t * 0.12 + target.x * 0.6;
+    group.rotation.y += (ry - group.rotation.y) * 0.05;
+    // Only the gear spins in-plane; other shapes stay upright.
+    points.rotation.z = current === 'work' ? points.rotation.z + 0.004 : points.rotation.z * 0.85;
+    group.rotation.x += ((current === 'top' ? 1.05 : 0) - target.y * 0.25 - group.rotation.x) * 0.05;
+    // Sit on the right on desktop (content is left), centred on mobile / contact.
+    const gx = wide() && current !== 'contact' ? 3.4 : 0;
+    group.position.x += (gx - group.position.x) * 0.05;
+    mat.uniforms.uAlpha.value += ((wide() || current === 'top' ? 1 : 0.45) - mat.uniforms.uAlpha.value) * 0.05;
+    dust.rotation.y = t * 0.01;
     renderer.render(scene, camera);
   })();
 }
