@@ -21,7 +21,7 @@ export const projects = [
 
 export const subdomains = [
   { sub: '', name: 'Portfolio (you are here)', desc: 'Halaman utama: 3D, animasi, AI.', url: 'https://efrino.web.id' },
-  { sub: 'ai', name: 'AI Playground', desc: 'Chat LLM lokal layar penuh, self-hosted Ollama.', url: 'https://ai.efrino.web.id' },
+  { sub: 'ai', name: 'AI Playground', desc: 'Chat AI layar penuh.', url: 'https://ai.efrino.web.id' },
   { sub: 'shop', name: 'Nayea Store', desc: 'E-commerce modest fashion, React + Supabase.', url: 'https://shop.efrino.web.id' },
   { sub: 'admin', name: 'Meca Admin', desc: 'Konsol admin platform training mekanik.', url: 'https://admin.efrino.web.id' },
   { sub: 'story', name: 'Story App', desc: 'SPA submission Dicoding Web Intermediate.', url: 'https://story.efrino.web.id' },
@@ -36,6 +36,6 @@ export const skills = {
   Backend: ['CodeIgniter', 'Express', 'Hapi', 'FastAPI', 'Flask', 'REST · JWT · SSE'],
   Mobile: ['Flutter', 'Dart', 'Riverpod', 'BLoC', 'Hive', 'Codemagic'],
   'Data & Cloud': ['MySQL', 'PostgreSQL', 'Supabase', 'Firebase', 'SQLite', 'Vercel'],
-  'AI & Ops': ['PyTorch', 'Transformers', 'Ollama', 'Docker', 'Traefik', 'Git'],
+  'AI & Ops': ['PyTorch', 'Transformers', 'LLM APIs', 'Docker', 'Traefik', 'Git'],
   Industry: ['PPIC', 'MRP / BOM', 'Inventory', 'SAP integration', 'Barcode / QR', 'Thermal printing'],
 };

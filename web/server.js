@@ -1,11 +1,12 @@
-// Zero-dependency server: static files, subdomain routing, and a rate-limited Ollama chat proxy.
+// Zero-dependency server: static files, subdomain routing, and a rate-limited AI chat proxy (Anthropic API).
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://ollama:11434';
-const MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:1.5b';
+// AI runs via the Anthropic API; no model is ever executed on this VPS.
+const API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const MODEL = process.env.AI_MODEL || 'claude-haiku-4-5';
 const DOMAIN = process.env.DOMAIN || 'efrino.web.id';
 const PUBLIC = path.join(__dirname, 'public');
 
@@ -31,7 +32,7 @@ const PROFILE = fs.readFileSync(path.join(__dirname, 'profile.txt'), 'utf8');
 const SYSTEM_PROMPTS = {
   recruiter: `You are "Efrino AI", the portfolio assistant for Efrino Wahyu Eko Pambudi. Answer recruiters' questions about him using ONLY the facts below. Be concise, warm and professional. Reply in the user's language (Indonesian or English). If a fact is not listed, say you don't know and suggest emailing efrinowep@gmail.com. Never invent employers, dates or numbers.\n\n${PROFILE}`,
   code: 'You are a senior software engineer. Explain or review the given code clearly and briefly: what it does, possible bugs, and one improvement. Use markdown code blocks. Reply in the user\'s language.',
-  free: 'You are a helpful, concise assistant running locally on Efrino\'s own server via Ollama. Reply in the user\'s language.',
+  free: 'You are a helpful, concise assistant on Efrino\'s portfolio site. Reply in the user\'s language.',
 };
 
 // Simple in-memory rate limit: 20 requests per 10 minutes per IP.
@@ -69,51 +70,54 @@ async function chat(req, res) {
     .map(m => ({ role: m.role, content: m.content.slice(0, 4000) }));
   if (!history.length) return send(res, 400, { error: 'Pesan kosong.' });
 
+  if (!API_KEY) return send(res, 503, { error: 'AI belum dikonfigurasi (ANTHROPIC_API_KEY kosong).' });
+
   busy++;
   const ctrl = new AbortController();
   res.on('close', () => ctrl.abort());
   try {
-    const upstream = await fetch(`${OLLAMA_URL}/api/chat`, {
+    const t0 = Date.now();
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: MODEL,
+        max_tokens: 600,
         stream: true,
-        keep_alive: '30m',
-        messages: [{ role: 'system', content: SYSTEM_PROMPTS[mode] }, ...history],
-        options: { num_predict: 500, temperature: mode === 'recruiter' ? 0.3 : 0.7, num_ctx: 4096 },
+        temperature: mode === 'recruiter' ? 0.3 : 0.7,
+        system: SYSTEM_PROMPTS[mode],
+        messages: history,
       }),
     });
-    if (!upstream.ok) throw new Error(`ollama ${upstream.status}`);
+    if (!upstream.ok) throw new Error(`anthropic ${upstream.status}: ${await upstream.text()}`);
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' });
+    // Translate Anthropic SSE events into the NDJSON lines chat.js expects.
     const decoder = new TextDecoder();
-    let buf = '';
+    let buf = '', tokens = 0;
     for await (const chunk of upstream.body) {
       buf += decoder.decode(chunk, { stream: true });
       let i;
       while ((i = buf.indexOf('\n')) >= 0) {
-        const line = buf.slice(0, i); buf = buf.slice(i + 1);
-        if (!line.trim()) continue;
-        const j = JSON.parse(line);
-        res.write(JSON.stringify({ t: j.message?.content || '', done: j.done, tps: j.eval_count && j.eval_duration ? +(j.eval_count / (j.eval_duration / 1e9)).toFixed(1) : undefined }) + '\n');
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line.startsWith('data:')) continue;
+        const ev = JSON.parse(line.slice(5));
+        if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') res.write(JSON.stringify({ t: ev.delta.text }) + '\n');
+        else if (ev.type === 'message_delta') tokens = ev.usage?.output_tokens || tokens;
       }
     }
-    res.end();
+    res.end(JSON.stringify({ t: '', done: true, tps: tokens ? +(tokens / ((Date.now() - t0) / 1000)).toFixed(1) : undefined }) + '\n');
   } catch (e) {
-    if (!res.headersSent) send(res, 502, { error: 'Model AI belum siap (mungkin masih diunduh). Coba lagi sebentar.' });
+    console.error(e.message);
+    if (!res.headersSent) send(res, 502, { error: 'Layanan AI sedang tidak tersedia. Coba lagi sebentar.' });
     else res.end();
   } finally {
     busy--;
   }
 }
 
-async function health(res) {
-  try {
-    const r = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(2000) });
-    const j = await r.json();
-    send(res, 200, { ok: true, model: MODEL, ready: (j.models || []).some(m => m.name.startsWith(MODEL)) });
-  } catch { send(res, 200, { ok: true, model: MODEL, ready: false }); }
+function health(res) {
+  send(res, 200, { ok: true, model: MODEL, ready: !!API_KEY });
 }
 
 function serveStatic(req, res, file) {
@@ -131,21 +135,6 @@ function serveStatic(req, res, file) {
     fs.createReadStream(p).pipe(res);
   });
 }
-
-// Make sure the model exists in the Ollama volume; retries until Ollama is up.
-async function ensureModel() {
-  try {
-    const tags = await (await fetch(`${OLLAMA_URL}/api/tags`)).json();
-    if ((tags.models || []).some(m => m.name.startsWith(MODEL))) return console.log(`model ${MODEL} ready`);
-    console.log(`pulling ${MODEL}…`);
-    const r = await fetch(`${OLLAMA_URL}/api/pull`, { method: 'POST', body: JSON.stringify({ model: MODEL, stream: false }) });
-    console.log(`pull ${MODEL}: ${r.status}`);
-  } catch (e) {
-    console.log(`ollama not reachable yet (${e.message}), retrying in 10s`);
-    setTimeout(ensureModel, 10000);
-  }
-}
-ensureModel();
 
 http.createServer((req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');

@@ -5,9 +5,9 @@ const SUGGEST = {
   free: ['Buat ide nama startup logistik', 'Explain SSE vs WebSocket in 3 bullets'],
 };
 const GREET = {
-  recruiter: 'Halo! 👋 Saya **Efrino AI**, berjalan 100% lokal di server Efrino via Ollama. Tanyakan apa saja tentang pengalaman, proyek, atau skill-nya.',
+  recruiter: 'Halo! 👋 Saya **Efrino AI**, dengan jawaban yang di-grounding ke CV Efrino. Tanyakan apa saja tentang pengalaman, proyek, atau skill-nya.',
   code: 'Mode **Code Explainer**. Tempel potongan kode, saya jelaskan & review.',
-  free: 'Mode **Free Chat**. Model open-source lokal, tanpa API pihak ketiga, data Anda tidak keluar dari server ini.',
+  free: 'Mode **Free Chat**. Tanya apa saja.',
 };
 
 function esc(s) { return s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
@@ -88,7 +88,7 @@ export function mountChat(root) {
           log.scrollTop = log.scrollHeight;
         }
       }
-      el.innerHTML = md(out) + `<span class="meta">⚡ ${tps ? tps + ' tok/s · ' : ''}${((performance.now() - t0) / 1000).toFixed(1)}s · local CPU</span>`;
+      el.innerHTML = md(out) + `<span class="meta">⚡ ${tps ? tps + ' tok/s · ' : ''}${((performance.now() - t0) / 1000).toFixed(1)}s</span>`;
       history.push({ role: 'assistant', content: out });
     } catch (err) {
       el.classList.add('err'); el.textContent = '⚠️ ' + err.message;

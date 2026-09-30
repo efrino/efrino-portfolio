@@ -1,27 +1,12 @@
 # Coolify deployment. Domains are set in the Coolify UI for the "web" service;
 # Coolify generates the Traefik routing and Let's Encrypt certificates.
+# Set ANTHROPIC_API_KEY in Coolify's Environment Variables.
 services:
   web:
     build: ./web
     restart: unless-stopped
     environment:
       - DOMAIN=efrino.web.id
-      - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:1.5b}
-    depends_on: [ollama]
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AI_MODEL=${AI_MODEL:-claude-haiku-4-5}
     expose: ["3000"]
-
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    volumes:
-      - ollama:/root/.ollama
-    environment:
-      - OLLAMA_NUM_PARALLEL=2
-      - OLLAMA_MAX_LOADED_MODELS=1
-    deploy:
-      resources:
-        limits: { cpus: "6", memory: 6g }
-
-volumes:
-  ollama: {}

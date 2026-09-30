@@ -122,9 +122,9 @@
   <section id="ai">
     <p class="eyebrow">04 · AI Playground</p>
     <h2 class="reveal">Wawancarai <span class="grad">AI saya.</span></h2>
-    <p class="lead reveal">LLM open-source (Qwen 2.5) yang berjalan <b>lokal di server saya sendiri</b> via Ollama + Docker. Tanpa API pihak ketiga. Streaming token, rate limiting, dan prompt yang di-grounding ke CV saya. Versi layar penuh: <a class="grad" href="https://ai.efrino.web.id">ai.efrino.web.id ↗</a></p>
+    <p class="lead reveal">Asisten AI (Claude) yang di-grounding ke CV saya. Streaming token dari backend Node saya sendiri, rate limiting, dan API key yang aman di server. Versi layar penuh: <a class="grad" href="https://ai.efrino.web.id">ai.efrino.web.id ↗</a></p>
     <div id="chatMount" class="reveal" style="margin-top:36px"></div>
-    <p class="ai-note">stack: Ollama · qwen2.5:1.5b · Node.js NDJSON streaming · Traefik · Docker Compose · CPU-only inference</p>
+    <p class="ai-note">stack: Claude API · Node.js streaming proxy · rate limiting · Traefik · Docker · Coolify</p>
   </section>
 
   <section id="eco">
@@ -153,7 +153,7 @@
   </section>
 </main>
 
-<footer>© <span id="yr"></span> Efrino Wahyu Eko Pambudi · self-hosted on my own VPS · Three.js · Ollama · Docker</footer>
+<footer>© <span id="yr"></span> Efrino Wahyu Eko Pambudi · self-hosted on my own VPS · Three.js · Claude · Docker</footer>
 
 <script type="module" src="main.js"></script>
 </body>
