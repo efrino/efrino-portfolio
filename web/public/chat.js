@@ -69,7 +69,7 @@ export function mountChat(root) {
     add('user', esc(text));
     history.push({ role: 'user', content: text });
     const el = add('bot', '<span class="dots"><span></span><span></span><span></span></span>');
-    let out = '', tps, t0 = performance.now();
+    let out = '', tps, provider, t0 = performance.now();
     try {
       const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode, messages: history }) });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
@@ -83,12 +83,12 @@ export function mountChat(root) {
         for (const l of lines) {
           if (!l) continue;
           const j = JSON.parse(l);
-          out += j.t; if (j.tps) tps = j.tps;
+          out += j.t; if (j.tps) tps = j.tps; if (j.provider) provider = j.provider;
           el.innerHTML = md(out) + '<span class="caret" style="display:inline-block;width:7px;height:1em;background:var(--accent2);vertical-align:middle"></span>';
           log.scrollTop = log.scrollHeight;
         }
       }
-      el.innerHTML = md(out) + `<span class="meta">⚡ ${tps ? tps + ' tok/s · ' : ''}${((performance.now() - t0) / 1000).toFixed(1)}s</span>`;
+      el.innerHTML = md(out) + `<span class="meta">⚡ ${provider ? provider + ' · ' : ''}${tps ? '~' + tps + ' tok/s · ' : ''}${((performance.now() - t0) / 1000).toFixed(1)}s</span>`;
       history.push({ role: 'assistant', content: out });
     } catch (err) {
       el.classList.add('err'); el.textContent = '⚠️ ' + err.message;

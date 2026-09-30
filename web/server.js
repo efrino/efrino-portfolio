@@ -1,12 +1,14 @@
-// Zero-dependency server: static files, subdomain routing, and a rate-limited AI chat proxy (Anthropic API).
+// Zero-dependency server: static files, subdomain routing, and a rate-limited AI chat proxy (Groq / Gemini free tiers).
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-// AI runs via the Anthropic API; no model is ever executed on this VPS.
-const API_KEY = process.env.ANTHROPIC_API_KEY || '';
-const MODEL = process.env.AI_MODEL || 'claude-haiku-4-5';
+// AI runs on free-tier hosted APIs (never on this VPS). Providers are tried in order.
+const PROVIDERS = [
+  { name: 'groq', key: process.env.GROQ_API_KEY, model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', url: 'https://api.groq.com/openai/v1/chat/completions' },
+  { name: 'gemini', key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-2.5-flash', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' },
+].filter(p => p.key);
 const DOMAIN = process.env.DOMAIN || 'efrino.web.id';
 const PUBLIC = path.join(__dirname, 'public');
 
@@ -70,45 +72,50 @@ async function chat(req, res) {
     .map(m => ({ role: m.role, content: m.content.slice(0, 4000) }));
   if (!history.length) return send(res, 400, { error: 'Pesan kosong.' });
 
-  if (!API_KEY) return send(res, 503, { error: 'AI belum dikonfigurasi (ANTHROPIC_API_KEY kosong).' });
+  if (!PROVIDERS.length) return send(res, 503, { error: 'AI belum dikonfigurasi (GROQ_API_KEY / GEMINI_API_KEY kosong).' });
 
   busy++;
   const ctrl = new AbortController();
   res.on('close', () => ctrl.abort());
   try {
     const t0 = Date.now();
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 600,
-        stream: true,
-        temperature: mode === 'recruiter' ? 0.3 : 0.7,
-        system: SYSTEM_PROMPTS[mode],
-        messages: history,
-      }),
-    });
-    if (!upstream.ok) throw new Error(`anthropic ${upstream.status}: ${await upstream.text()}`);
-    res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' });
-    // Translate Anthropic SSE events into the NDJSON lines chat.js expects.
+    let upstream, used;
+    // Fall back to the next provider on quota or server errors.
+    for (const p of PROVIDERS) {
+      const r = await fetch(p.url, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
+        body: JSON.stringify({
+          model: p.model,
+          stream: true,
+          max_tokens: 600,
+          temperature: mode === 'recruiter' ? 0.3 : 0.7,
+          messages: [{ role: 'system', content: SYSTEM_PROMPTS[mode] }, ...history],
+        }),
+      });
+      if (r.ok) { upstream = r; used = p; break; }
+      console.error(`${p.name} ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    }
+    if (!upstream) throw new Error('all providers failed');
+    res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no', 'X-AI-Provider': used.name });
+    // Translate OpenAI-style SSE chunks into the NDJSON lines chat.js expects.
     const decoder = new TextDecoder();
-    let buf = '', tokens = 0;
+    let buf = '', chars = 0;
     for await (const chunk of upstream.body) {
       buf += decoder.decode(chunk, { stream: true });
       let i;
       while ((i = buf.indexOf('\n')) >= 0) {
         const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
-        if (!line.startsWith('data:')) continue;
-        const ev = JSON.parse(line.slice(5));
-        if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') res.write(JSON.stringify({ t: ev.delta.text }) + '\n');
-        else if (ev.type === 'message_delta') tokens = ev.usage?.output_tokens || tokens;
+        if (!line.startsWith('data:') || line === 'data: [DONE]') continue;
+        const t = JSON.parse(line.slice(5)).choices?.[0]?.delta?.content;
+        if (t) { chars += t.length; res.write(JSON.stringify({ t }) + '\n'); }
       }
     }
-    res.end(JSON.stringify({ t: '', done: true, tps: tokens ? +(tokens / ((Date.now() - t0) / 1000)).toFixed(1) : undefined }) + '\n');
+    // Rough tokens/s estimate (~4 chars per token).
+    res.end(JSON.stringify({ t: '', done: true, tps: +((chars / 4) / ((Date.now() - t0) / 1000)).toFixed(1), provider: used.name }) + '\n');
   } catch (e) {
-    console.error(e.message);
+    if (e.name !== 'AbortError') console.error(e.message);
     if (!res.headersSent) send(res, 502, { error: 'Layanan AI sedang tidak tersedia. Coba lagi sebentar.' });
     else res.end();
   } finally {
@@ -117,7 +124,7 @@ async function chat(req, res) {
 }
 
 function health(res) {
-  send(res, 200, { ok: true, model: MODEL, ready: !!API_KEY });
+  send(res, 200, { ok: true, model: PROVIDERS.map(p => p.name).join(' → ') || 'none', ready: PROVIDERS.length > 0 });
 }
 
 function serveStatic(req, res, file) {

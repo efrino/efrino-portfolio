@@ -1,12 +1,12 @@
 # Coolify deployment. Domains are set in the Coolify UI for the "web" service;
 # Coolify generates the Traefik routing and Let's Encrypt certificates.
-# Set ANTHROPIC_API_KEY in Coolify's Environment Variables.
+# Set GROQ_API_KEY and GEMINI_API_KEY (both free) in Coolify's Environment Variables.
 services:
   web:
     build: ./web
     restart: unless-stopped
     environment:
       - DOMAIN=efrino.web.id
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - AI_MODEL=${AI_MODEL:-claude-haiku-4-5}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     expose: ["3000"]
