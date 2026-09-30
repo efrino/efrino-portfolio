@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Efrino AI Playground</title>
+<meta name="description" content="Local LLM playground self-hosted with Ollama on Efrino's VPS.">
+<meta name="theme-color" content="#07080d">
+<link rel="icon" href="favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  body { min-height: 100vh; background: radial-gradient(ellipse at top, #1a1340, var(--bg) 60%); }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 32px 16px; display: flex; flex-direction: column; gap: 18px; min-height: 100vh; }
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .top h1 { font-size: 26px; letter-spacing: -.02em; }
+  .chat { flex: 1; height: auto; min-height: 70vh; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>🤖 <span class="grad">Efrino AI</span> Playground</h1>
+    <a class="btn" href="https://efrino.web.id">← Portfolio</a>
+  </div>
+  <div id="chatMount" style="display:flex;flex-direction:column;flex:1"></div>
+  <p class="ai-note">Qwen 2.5 via Ollama · CPU inference di VPS pribadi · rate-limited · riwayat chat tidak disimpan</p>
+</div>
+<script type="module">
+  import { mountChat, chatMarkup } from './chat.js';
+  const m = document.getElementById('chatMount');
+  m.innerHTML = chatMarkup; mountChat(m);
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+name: efrino-portfolio
+
+services:
+  web:
+    build: ./web
+    restart: unless-stopped
+    environment:
+      - DOMAIN=efrino.web.id
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:1.5b
+    depends_on: [ollama]
+    networks: [coolify, internal]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - "traefik.http.routers.efrino-http.rule=Host(`efrino.web.id`) || Host(`www.efrino.web.id`) || Host(`ai.efrino.web.id`) || Host(`shop.efrino.web.id`) || Host(`admin.efrino.web.id`) || Host(`notes.efrino.web.id`) || Host(`api.efrino.web.id`) || Host(`story.efrino.web.id`) || Host(`github.efrino.web.id`) || Host(`linkedin.efrino.web.id`)"
+      - traefik.http.routers.efrino-http.entrypoints=http
+      - traefik.http.routers.efrino-http.middlewares=efrino-https
+      - traefik.http.middlewares.efrino-https.redirectscheme.scheme=https
+      - "traefik.http.routers.efrino.rule=Host(`efrino.web.id`) || Host(`www.efrino.web.id`) || Host(`ai.efrino.web.id`) || Host(`shop.efrino.web.id`) || Host(`admin.efrino.web.id`) || Host(`notes.efrino.web.id`) || Host(`api.efrino.web.id`) || Host(`story.efrino.web.id`) || Host(`github.efrino.web.id`) || Host(`linkedin.efrino.web.id`)"
+      - traefik.http.routers.efrino.entrypoints=https
+      - traefik.http.routers.efrino.tls=true
+      - traefik.http.routers.efrino.tls.certresolver=letsencrypt
+      - traefik.http.routers.efrino.middlewares=efrino-gzip
+      - traefik.http.middlewares.efrino-gzip.compress=true
+      - traefik.http.middlewares.efrino-gzip.compress.excludedcontenttypes=application/x-ndjson
+      - traefik.http.services.efrino.loadbalancer.server.port=3000
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes: [ollama:/root/.ollama]
+    networks: [internal]
+    environment:
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_MAX_LOADED_MODELS=1
+    deploy:
+      resources:
+        limits: { cpus: "6", memory: 6g }
+
+  # One-shot job: pulls the model into the shared volume, then exits.
+
+networks:
+  coolify: { external: true }
+  internal: {}
+
+volumes:
+  ollama: {}

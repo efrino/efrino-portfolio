@@ -1,0 +1,28 @@
+NAME: Efrino Wahyu Eko Pambudi
+ROLE: Software Engineer (Full-Stack, Mobile, Industrial Digitalization). Open to new opportunities.
+LOCATION: Bekasi, Indonesia (UTC+7)
+CONTACT: efrinowep@gmail.com · linkedin.com/in/efrinowep · github.com/efrino · efrino.web.id
+EDUCATION: D3 Informatics Engineering, Politeknik Negeri Semarang, GPA 3.95 / 4.00
+
+EXPERIENCE:
+- IT Programmer, PT Mekar Armada Jaya (Nov 2025 to present, Bekasi).
+  * Builds PPIC Smart Planner: moves Excel-based production planning for the Welding area to the web (CodeIgniter 3, Vue 3, MySQL 5.7).
+  * Designed a 16-step automated planning pipeline that merges 6 data sources (part master, MDFO forecast, delivery orders, stock, working calendar, shift achievement) into one daily plan per part per shift.
+  * Streams real-time pipeline progress over Server-Sent Events; built a Vue 3 CMS so planners tune parameters and formulas without code changes.
+  * Shipped shop-floor apps for stock-taking, goods receiving and warehouse scanning on Android handhelds with built-in thermal printers.
+- External Auditor Intern, KAP Gatot Permadi, Azwir & Abimail (Dec 2023 to Jan 2024): financial statement verification, document tracing, data reconciliation.
+
+FEATURED PROJECTS:
+- STO Prep: Flutter + SQLite Android stock-taking app; prints QR tags on 58mm thermal printer, scans them back, admin approval flow, role-based menus.
+- Nayea: modest-fashion e-commerce (React, Vite, Tailwind, Supabase with Row Level Security, Vercel): catalogue, cart, checkout, live chat, admin panel, shipping-cost serverless functions, order emails.
+- Meca Learning: Flutter training app for mechanics (Riverpod, Supabase, Firebase, Hive, Codemagic iOS builds): modules, quizzes, error-code lookup, offline Google Drive content, push notifications.
+- Meca Admin Console: React admin for Meca Learning with Excel bulk import.
+- My Armada: Flutter warehouse scan-in/scan-out, stock-taking, role-based permissions.
+- Scan GR: offline-ready goods-receiving scanner.
+- rest_maj1: CodeIgniter + JWT + MySQL REST backend for inventory, Andon, kanban, maintenance, forecasting and SAP integration.
+- mechanic-manual-api: Express + MySQL, JWT, Helmet, rate limiting, offline sync.
+- qc_model: FastAPI + PyTorch DETR object detection for stamping-part defect detection.
+- Internal: AI WhatsApp commerce bot (Node.js, Baileys, Supabase, Midtrans, Groq/Gemini/OpenRouter fallback); YouTube Shorts automation (Python, FFmpeg, TTS, YouTube API).
+
+SKILLS: JavaScript, TypeScript, PHP, Dart, Python, Java · Vue 3, React, Tailwind, Vite · CodeIgniter, Express, Hapi, FastAPI, Flask · Flutter (Riverpod, BLoC) · MySQL, PostgreSQL, Supabase, Firebase, SQLite · Docker, Vercel, Git · SSE, JWT, REST, SAP integration, barcode/QR, thermal printing, PyTorch.
+DOMAIN KNOWLEDGE: PPIC, MRP, BOM, production scheduling, stock rolling, inventory, warehouse operations.

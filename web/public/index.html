@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Efrino Wahyu Eko Pambudi · Software Engineer</title>
+<meta name="description" content="Software Engineer: Full-Stack, Mobile & Industrial Digitalization. PPIC pipelines, Flutter handheld apps, React & Vue dashboards, local AI.">
+<meta property="og:title" content="Efrino Wahyu Eko Pambudi · Software Engineer">
+<meta property="og:description" content="I build software that runs inside real operations.">
+<meta property="og:url" content="https://efrino.web.id">
+<meta name="theme-color" content="#07080d">
+<link rel="icon" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="bg3d"></canvas>
+<div class="noise"></div>
+<div class="glow"></div>
+
+<nav>
+  <a href="#top" class="logo">efrino<span class="grad">.</span></a>
+  <a href="#about">About</a>
+  <a href="#work">Experience</a>
+  <a href="#projects">Projects</a>
+  <a href="#ai">AI Lab</a>
+  <a href="#eco">Ecosystem</a>
+  <a href="#contact">Contact</a>
+</nav>
+
+<main id="top">
+  <section class="hero">
+    <div class="status"><i></i> Open to new opportunities · Bekasi, ID</div>
+    <h1><span class="line"><span>Efrino Wahyu</span></span><span class="line"><span class="grad">Eko Pambudi.</span></span></h1>
+    <p class="typed"><b>Software Engineer</b> — <span id="typed"></span><span class="caret"></span></p>
+    <div class="cta">
+      <a class="btn primary magnetic" href="#projects">Lihat Proyek →</a>
+      <a class="btn magnetic" href="#ai">🤖 Tanya AI tentang saya</a>
+      <a class="btn magnetic" href="mailto:efrinowep@gmail.com">✉️ Hire me</a>
+    </div>
+    <div class="stats">
+      <div><b data-count="3.95">0</b><span>GPA / 4.00 · Polines</span></div>
+      <div><b data-count="16">0</b><span>step PPIC pipeline, live SSE</span></div>
+      <div><b data-count="50" data-suffix="+">0</b><span>public repositories</span></div>
+      <div><b data-count="4">0</b><span>platforms: web · Android · iOS · handheld</span></div>
+    </div>
+    <p class="scroll-hint">↓ scroll · gerakkan mouse untuk memutar scene 3D</p>
+  </section>
+
+  <section id="about">
+    <p class="eyebrow">01 · About</p>
+    <div class="about-grid">
+      <div class="reveal">
+        <h2>Software yang <span class="grad">berjalan di operasi nyata.</span></h2>
+        <p class="lead">Saya membangun perangkat lunak untuk perencanaan produksi, gudang, handheld lantai produksi, dan toko online, yaitu mengubah proses bisnis berbasis Excel menjadi backend yang andal, dashboard yang bersih, dan aplikasi mobile yang dipakai setiap hari.</p>
+        <ul class="bring">
+          <li><b>🏭 Industry-grade delivery</b><span>PPIC planning, stock-taking, inventory & Andon systems dipakai harian oleh tim pabrik.</span></li>
+          <li><b>⚡ Real-time systems</b><span>Pipeline 16 langkah dengan progress live via Server-Sent Events.</span></li>
+          <li><b>📱 End-to-end ownership</b><span>Dari skema database & REST API sampai Flutter di Android handheld & iOS.</span></li>
+          <li><b>🔌 Integration mindset</b><span>SAP, thermal printer, barcode/QR scanner, Google Drive, Supabase.</span></li>
+        </ul>
+      </div>
+      <div class="code-card reveal tilt">
+        <header><i></i><i></i><i></i></header>
+<pre><span class="k">name</span>:      <span class="s">Efrino Wahyu Eko Pambudi</span>
+<span class="k">role</span>:      <span class="s">IT Programmer @ PT Mekar Armada Jaya</span>
+<span class="k">since</span>:     <span class="n">2025-11</span>
+<span class="k">education</span>: <span class="s">D3 Informatics Eng., Polines</span>
+<span class="k">gpa</span>:       <span class="n">3.95</span> / <span class="n">4.00</span>
+<span class="k">location</span>:  <span class="s">Bekasi, Indonesia (UTC+7)</span>
+<span class="k">focus</span>:
+  - <span class="s">Industrial digitalization</span>
+  - <span class="s">Full-stack web</span>
+  - <span class="s">Cross-platform mobile</span>
+<span class="k">domain</span>:    [<span class="s">PPIC</span>, <span class="s">MRP</span>, <span class="s">BOM</span>, <span class="s">Inventory</span>]
+<span class="k">status</span>:    <span class="s">open_to_work</span> ✅</pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="work">
+    <p class="eyebrow">02 · Experience</p>
+    <h2 class="reveal">Dari spreadsheet ke <span class="grad">sistem produksi.</span></h2>
+    <div class="timeline">
+      <div class="job reveal">
+        <p class="when">Nov 2025 — Present · Bekasi</p>
+        <h3>IT Programmer</h3>
+        <p class="at">PT Mekar Armada Jaya</p>
+        <ul>
+          <li>Membangun <b>PPIC Smart Planner</b>: memindahkan perencanaan produksi Welding dari Excel ke web (CodeIgniter 3, Vue 3, MySQL).</li>
+          <li>Merancang <b>pipeline otomatis 16 langkah</b> yang menggabungkan 6 sumber data (part master, forecast MDFO, delivery order, stok, kalender kerja, achievement shift) menjadi satu rencana harian per part per shift.</li>
+          <li>Streaming progress <b>real-time via Server-Sent Events</b> + <b>CMS Vue 3</b> agar planner bisa mengubah parameter & formula tanpa ubah kode.</li>
+          <li>Merilis aplikasi <b>stock-taking, goods receiving & warehouse scanning</b> di Android handheld dengan thermal printer bawaan.</li>
+        </ul>
+        <div class="pipeline" id="pipeline"></div>
+        <p class="pipeline-label" id="pipelineLabel">pipeline: idle</p>
+      </div>
+      <div class="job reveal">
+        <p class="when">Dec 2023 — Jan 2024</p>
+        <h3>External Auditor (Internship)</h3>
+        <p class="at">KAP Gatot Permadi, Azwir & Abimail</p>
+        <ul>
+          <li>Verifikasi laporan keuangan, penelusuran dokumen & rekonsiliasi data: fondasi ketelitian data yang kini saya bawa ke sistem ERP/PPIC.</li>
+        </ul>
+      </div>
+      <div class="job reveal">
+        <p class="when">Graduated · GPA 3.95 / 4.00</p>
+        <h3>D3 Informatics Engineering</h3>
+        <p class="at">Politeknik Negeri Semarang</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="projects">
+    <p class="eyebrow">03 · Selected Work</p>
+    <h2 class="reveal">Proyek yang <span class="grad">dipakai orang sungguhan.</span></h2>
+    <div class="filters" id="filters"></div>
+    <div class="projects" id="projectGrid"></div>
+  </section>
+
+  <section id="ai">
+    <p class="eyebrow">04 · AI Playground</p>
+    <h2 class="reveal">Wawancarai <span class="grad">AI saya.</span></h2>
+    <p class="lead reveal">LLM open-source (Qwen 2.5) yang berjalan <b>lokal di server saya sendiri</b> via Ollama + Docker. Tanpa API pihak ketiga. Streaming token, rate limiting, dan prompt yang di-grounding ke CV saya. Versi layar penuh: <a class="grad" href="https://ai.efrino.web.id">ai.efrino.web.id ↗</a></p>
+    <div id="chatMount" class="reveal" style="margin-top:36px"></div>
+    <p class="ai-note">stack: Ollama · qwen2.5:1.5b · Node.js NDJSON streaming · Traefik · Docker Compose · CPU-only inference</p>
+  </section>
+
+  <section id="eco">
+    <p class="eyebrow">05 · Ecosystem</p>
+    <h2 class="reveal">Satu domain, <span class="grad">banyak dunia.</span></h2>
+    <p class="lead reveal">Setiap subdomain <code>*.efrino.web.id</code> adalah pintu ke proyek live, dirouting oleh Traefik di VPS saya sendiri dengan SSL otomatis.</p>
+    <div class="eco" id="eco"></div>
+  </section>
+
+  <section id="skills">
+    <p class="eyebrow">06 · Stack</p>
+    <h2 class="reveal">Toolbox.</h2>
+    <div class="skills" id="skillGrid"></div>
+    <div class="marquee"><div id="marquee"></div></div>
+  </section>
+
+  <section id="contact" class="contact">
+    <p class="eyebrow">07 · Contact</p>
+    <h2 class="reveal">Let's build<br><span class="grad">something real.</span></h2>
+    <p class="lead reveal" style="margin:0 auto">Terbuka untuk posisi Software Engineer, Full-Stack, atau Mobile, onsite di Jabodetabek maupun remote.</p>
+    <div class="cta">
+      <a class="btn primary magnetic" href="mailto:efrinowep@gmail.com">✉️ efrinowep@gmail.com</a>
+      <a class="btn magnetic" href="https://www.linkedin.com/in/efrinowep/" target="_blank" rel="noopener">LinkedIn ↗</a>
+      <a class="btn magnetic" href="https://github.com/efrino" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
+  </section>
+</main>
+
+<footer>© <span id="yr"></span> Efrino Wahyu Eko Pambudi · self-hosted on my own VPS · Three.js · Ollama · Docker</footer>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>
