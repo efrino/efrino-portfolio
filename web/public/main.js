@@ -42,9 +42,10 @@ const SHAPES = {
   brain(i) {
     // Neural net: nodes on a noisy sphere plus links between neighbours.
     const layers = 5, perLayer = 8, L = i % layers, n = Math.floor(i / layers) % perLayer;
-    const node = (l, m) => [(l - 2) * 1.3, ((m + 0.5) / perLayer - 0.5) * 5 * (1 - Math.abs(l - 2) * 0.12), Math.sin(l * 1.7 + m) * 0.6];
-    if (i % 3 === 0) { const p = node(L, n); return [p[0] + rnd(0.12), p[1] + rnd(0.12), p[2] + rnd(0.12)]; }
-    if (L === layers - 1) { const p = node(L, n); return [p[0] + rnd(0.15), p[1] + rnd(0.15), p[2] + rnd(0.15)]; }
+    const node = (l, m) => [(l - 2) * 1.6, ((m + 0.5) / perLayer - 0.5) * 2.8 * (1 - Math.abs(l - 2) * 0.15), Math.sin(l * 1.7 + m) * 0.4];
+    if (i % 2 === 0) { const p = node(L, n), r = 0.09 * Math.cbrt(Math.random()), a = Math.random() * 6.283, b = Math.acos(rnd(1));
+      return [p[0] + r * Math.sin(b) * Math.cos(a), p[1] + r * Math.sin(b) * Math.sin(a), p[2] + r * Math.cos(b)]; }
+    if (L === layers - 1) { const p = node(L, n); return [p[0] + rnd(0.09), p[1] + rnd(0.09), p[2] + rnd(0.09)]; }
     const a = node(L, n), b = node(L + 1, Math.floor(Math.random() * perLayer)), t = Math.random();
     return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   },
@@ -96,7 +97,7 @@ function scene3d() {
     about: fromGen(SHAPES.helix),
     work: fromGen(SHAPES.gear),
     projects: scale(fromGen(SHAPES.phone), 0.72),
-    ai: scale(fromGen(SHAPES.brain), 0.72),
+    ai: scale(fromGen(SHAPES.brain), 0.58),
     eco: fromGen(SHAPES.globe),
     skills: fromGen(SHAPES.cubes),
     contact: fromGen(SHAPES.portal),
@@ -211,8 +212,11 @@ function scene3d() {
     points.rotation.z = current === 'work' ? points.rotation.z + 0.004 : points.rotation.z * 0.85;
     group.rotation.x += ((current === 'top' ? 1.05 : 0) - target.y * 0.25 - group.rotation.x) * 0.05;
     // Sit on the right on desktop (content is left), centred on mobile / contact.
-    const gx = wide() && current !== 'contact' ? 3.4 : 0;
+    const gx = wide() && current !== 'contact' ? (current === 'ai' ? 4.1 : 3.4) : 0;
     group.position.x += (gx - group.position.x) * 0.05;
+    // In the AI section the chat box fills the lower area, so lift the net into the empty top-right.
+    const aiTop = current === 'ai' && wide();
+    group.position.y += ((aiTop ? 3.2 : 0) - group.position.y) * 0.05;
     mat.uniforms.uAlpha.value += ((wide() || current === 'top' ? 1 : 0.45) - mat.uniforms.uAlpha.value) * 0.05;
     dust.rotation.y = t * 0.01;
     renderer.render(scene, camera);
