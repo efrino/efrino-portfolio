@@ -6,7 +6,7 @@ const path = require('path');
 const PORT = process.env.PORT || 3000;
 // AI runs on free-tier hosted APIs (never on this VPS). Providers are tried in order.
 const PROVIDERS = [
-  { name: 'groq', key: process.env.GROQ_API_KEY, model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', url: 'https://api.groq.com/openai/v1/chat/completions' },
+  { name: 'groq', key: process.env.GROQ_API_KEY, model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b', url: 'https://api.groq.com/openai/v1/chat/completions', extra: { reasoning_effort: 'low' } },
   { name: 'gemini', key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-2.5-flash', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' },
 ].filter(p => p.key);
 const DOMAIN = process.env.DOMAIN || 'efrino.web.id';
@@ -136,6 +136,7 @@ async function chat(req, res) {
           max_tokens: 600,
           temperature: mode === 'recruiter' ? 0.3 : 0.7,
           messages: [{ role: 'system', content: SYSTEM_PROMPTS[mode] }, ...history],
+          ...p.extra,
         }),
       });
       if (r.ok) { upstream = r; used = p; break; }
@@ -152,7 +153,7 @@ async function chat(req, res) {
       while ((i = buf.indexOf('\n')) >= 0) {
         const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
         if (!line.startsWith('data:') || line === 'data: [DONE]') continue;
-        const t = JSON.parse(line.slice(5)).choices?.[0]?.delta?.content;
+        const t = JSON.parse(line.slice(5)).choices?.[0]?.delta?.content;  // reasoning tokens arrive separately and are skipped
         if (t) { chars += t.length; res.write(JSON.stringify({ t }) + '\n'); }
       }
     }
