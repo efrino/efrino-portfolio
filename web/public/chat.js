@@ -51,10 +51,9 @@ export function mountChat(root) {
   const checkHealth = async () => {
     try {
       const j = await (await fetch('/api/health')).json();
-      status.classList.toggle('ready', j.ready);
-      status.querySelector('span').textContent = j.ready ? `${j.model} · online` : `${j.model} · warming up`;
-      if (!j.ready) setTimeout(checkHealth, 15000);
-    } catch { status.querySelector('span').textContent = 'offline'; }
+      status.classList.add('ready');
+      status.querySelector('span').textContent = j.ready ? `${j.model} · online` : 'knowledge-base mode';
+    } catch { status.querySelector('span').textContent = 'knowledge-base mode'; }
   };
   checkHealth();
 

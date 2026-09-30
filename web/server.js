@@ -48,17 +48,61 @@ function limited(ip) {
 }
 setInterval(() => { const now = Date.now(); for (const [ip, l] of hits) if (l.every(t => now - t > 600000)) hits.delete(ip); }, 60000).unref();
 
-let busy = 0; // Only a couple of concurrent generations on a CPU box.
+let busy = 0; // Caps concurrent upstream calls to stay within free-tier limits.
 
 function send(res, code, body, type = 'application/json') {
   res.writeHead(code, { 'Content-Type': type });
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
 }
 
+// Knowledge-base answers used when no AI provider is available, so the
+// playground still works (and never shows config errors to visitors).
+const KB = [
+  { k: ['siapa', 'who', 'about', 'tentang', 'profil', 'profile', 'kenal', 'introduce'], a: 'Efrino Wahyu Eko Pambudi adalah **Software Engineer** di Bekasi yang fokus pada digitalisasi industri, full-stack web, dan mobile. Saat ini **IT Programmer di PT Mekar Armada Jaya** (sejak Nov 2025), membangun sistem yang dipakai harian oleh tim pabrik: perencanaan produksi, stock-taking, gudang, dan Andon. Lulusan D3 Teknik Informatika Politeknik Negeri Semarang dengan **IPK 3.95**.' },
+  { k: ['ppic', 'planner', 'pipeline', 'sse', 'produksi', 'production', 'planning', 'flagship'], a: '**PPIC Smart Planner** adalah proyek unggulan Efrino: memindahkan perencanaan produksi area Welding dari Excel ke web (CodeIgniter 3, Vue 3, MySQL).\n\n- Pipeline otomatis **16 langkah** yang menggabungkan **6 sumber data** (part master, forecast MDFO, delivery order, stok, kalender kerja, achievement shift) menjadi rencana harian per part per shift.\n- Progress real-time via **Server-Sent Events**.\n- **CMS Vue 3** agar planner bisa mengubah parameter & formula tanpa ubah kode.' },
+  { k: ['mobile', 'flutter', 'android', 'ios', 'handheld', 'app', 'aplikasi'], a: 'Di mobile, Efrino membangun aplikasi **Flutter** untuk Android, iOS, dan handheld industri:\n\n- **STO Prep**: stock-taking dengan cetak tag QR di thermal printer 58mm.\n- **My Armada** & **Scan GR**: scan gudang, offline-ready.\n- **Meca Learning**: aplikasi training mekanik dengan konten offline, push notification, dan build iOS via Codemagic.\n\nStack: Riverpod, BLoC, Hive, SQLite, Supabase, Firebase.' },
+  { k: ['pengalaman', 'experience', 'kerja', 'work', 'job', 'karir', 'career'], a: '**Pengalaman:**\n\n- **IT Programmer, PT Mekar Armada Jaya** (Nov 2025 – sekarang): PPIC Smart Planner, aplikasi stock-taking, goods receiving, dan warehouse scanning di Android handheld.\n- **External Auditor Intern, KAP Gatot Permadi, Azwir & Abimail** (Des 2023 – Jan 2024): verifikasi laporan keuangan dan rekonsiliasi data.' },
+  { k: ['skill', 'stack', 'teknologi', 'technology', 'bahasa', 'language', 'keahlian', 'tools'], a: '**Skill utama:**\n\n- **Frontend:** Vue 3, React, Tailwind, Vite, TypeScript\n- **Backend:** CodeIgniter, Express, Hapi, FastAPI, Flask, REST/JWT/SSE\n- **Mobile:** Flutter (Riverpod, BLoC)\n- **Data:** MySQL, PostgreSQL, Supabase, Firebase, SQLite\n- **Lainnya:** Docker, integrasi SAP, barcode/QR, thermal printing, PyTorch\n- **Domain:** PPIC, MRP, BOM, inventory' },
+  { k: ['proyek', 'project', 'portfolio', 'portofolio', 'nayea', 'ecommerce', 'e-commerce'], a: '**Proyek pilihan:**\n\n- **PPIC Smart Planner**: perencanaan produksi dengan pipeline 16 langkah.\n- **Nayea**: e-commerce modest fashion (React, Supabase dengan RLS).\n- **STO Prep, My Armada, Scan GR**: aplikasi Flutter untuk gudang dan lantai produksi.\n- **Meca Learning + Admin Console**: platform training mekanik.\n- **QC Defect Detection**: FastAPI + PyTorch DETR.\n- **AI WhatsApp Commerce Bot**: dengan fallback multi-provider AI.\n\nLihat bagian Projects di halaman ini untuk detail dan link.' },
+  { k: ['ai', 'machine learning', 'ml', 'bot', 'otomasi', 'automation', 'llm'], a: 'Di AI & otomasi, Efrino membangun:\n\n- **QC Defect Detection**: deteksi cacat part stamping dengan DETR (PyTorch, FastAPI).\n- **AI WhatsApp Commerce Bot**: fuzzy product matching, pembayaran Midtrans, fallback Groq → Gemini → OpenRouter.\n- **YouTube Shorts Automation**: skrip AI → TTS → FFmpeg → upload otomatis.' },
+  { k: ['pendidikan', 'education', 'kuliah', 'ipk', 'gpa', 'kampus', 'polines', 'university'], a: '**D3 Teknik Informatika, Politeknik Negeri Semarang**, IPK **3.95 / 4.00**.' },
+  { k: ['kontak', 'contact', 'email', 'hubungi', 'hire', 'rekrut', 'linkedin', 'interview'], a: 'Efrino terbuka untuk posisi **Software Engineer, Full-Stack, atau Mobile** (onsite Jabodetabek maupun remote).\n\n- Email: **efrinowep@gmail.com**\n- LinkedIn: linkedin.com/in/efrinowep\n- GitHub: github.com/efrino' },
+  { k: ['kenapa', 'why', 'hire him', 'kelebihan', 'strength', 'unggul', 'value'], a: 'Alasan merekrut Efrino:\n\n- **Terbukti di produksi**: sistemnya dipakai harian oleh tim pabrik, bukan sekadar demo.\n- **End-to-end**: dari skema database dan API sampai aplikasi Flutter di handheld.\n- **Paham domain bisnis**: PPIC, MRP, BOM, inventory, ditambah latar belakang audit.\n- **Integrasi nyata**: SAP, thermal printer, barcode/QR, Supabase.\n- **IPK 3.95**, cepat belajar dan konsisten.' },
+];
+const KB_FALLBACK = 'Saya belum punya jawaban spesifik untuk itu. Coba tanyakan tentang **pengalaman**, **proyek**, **PPIC Smart Planner**, **skill**, **mobile**, **pendidikan**, atau **kontak** Efrino. Untuk pertanyaan lain, silakan email **efrinowep@gmail.com**.';
+const OFFLINE_MODE_MSG = 'Mode ini sedang dalam pemeliharaan. Sementara itu, coba tab **🎯 Ask about Efrino** untuk bertanya tentang pengalaman dan proyek Efrino.';
+
+function kbAnswer(q) {
+  const t = q.toLowerCase();
+  let best = null, score = 0;
+  for (const e of KB) {
+    const s = e.k.filter(k => t.includes(k)).length;
+    if (s > score) { best = e; score = s; }
+  }
+  return best ? best.a : KB_FALLBACK;
+}
+
+// Stream a fixed text in small chunks so it types out like a model reply.
+async function streamText(res, text, provider) {
+  res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' });
+  const parts = text.match(/\S+\s*/g) || [text];
+  for (const p of parts) {
+    if (res.destroyed) return;
+    res.write(JSON.stringify({ t: p }) + '\n');
+    await new Promise(r => setTimeout(r, 25));
+  }
+  res.end(JSON.stringify({ t: '', done: true, provider }) + '\n');
+}
+
+function offlineReply(res, mode, history) {
+  const last = history[history.length - 1].content;
+  return streamText(res, mode === 'recruiter' ? kbAnswer(last) : OFFLINE_MODE_MSG, 'knowledge base');
+}
+
 async function chat(req, res) {
   const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   if (limited(ip)) return send(res, 429, { error: 'Terlalu banyak permintaan. Coba lagi beberapa menit lagi.' });
-  if (busy >= 2) return send(res, 503, { error: 'AI sedang sibuk melayani pengunjung lain. Coba sebentar lagi.' });
+  if (busy >= 4) return send(res, 503, { error: 'AI sedang sibuk melayani pengunjung lain. Coba sebentar lagi.' });
 
   let raw = '';
   for await (const chunk of req) { raw += chunk; if (raw.length > 20000) return send(res, 413, { error: 'Pesan terlalu panjang.' }); }
@@ -72,7 +116,7 @@ async function chat(req, res) {
     .map(m => ({ role: m.role, content: m.content.slice(0, 4000) }));
   if (!history.length) return send(res, 400, { error: 'Pesan kosong.' });
 
-  if (!PROVIDERS.length) return send(res, 503, { error: 'AI belum dikonfigurasi (GROQ_API_KEY / GEMINI_API_KEY kosong).' });
+  if (!PROVIDERS.length) return offlineReply(res, mode, history);
 
   busy++;
   const ctrl = new AbortController();
@@ -97,7 +141,7 @@ async function chat(req, res) {
       if (r.ok) { upstream = r; used = p; break; }
       console.error(`${p.name} ${r.status}: ${(await r.text()).slice(0, 200)}`);
     }
-    if (!upstream) throw new Error('all providers failed');
+    if (!upstream) { console.error('all AI providers failed, using knowledge base'); return await offlineReply(res, mode, history); }
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no', 'X-AI-Provider': used.name });
     // Translate OpenAI-style SSE chunks into the NDJSON lines chat.js expects.
     const decoder = new TextDecoder();
