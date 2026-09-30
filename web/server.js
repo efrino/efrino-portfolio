@@ -162,4 +162,4 @@ http.createServer((req, res) => {
   let file = decodeURIComponent(url.pathname);
   if (file === '/') file = sub === 'ai' ? '/playground.html' : '/index.html';
   serveStatic(req, res, file);
-}).listen(PORT, () => console.log(`listening on :${PORT} (model ${MODEL})`));
+}).listen(PORT, () => console.log(`listening on :${PORT} (AI: ${PROVIDERS.map(p => p.name).join(" → ") || "not configured"})`));
