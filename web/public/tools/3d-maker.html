@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Maker: Teks & Logo ke 3D · Efrino Tools</title>
+<meta name="description" content="Ubah teks atau logo SVG menjadi model 3D. Atur ketebalan, bevel, dan material, lalu ekspor GLB atau STL untuk 3D print. Gratis, di browser.">
+<meta property="og:title" content="3D Maker: teks & logo ke model 3D">
+<meta name="theme-color" content="#07080d">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/tools.css">
+<style>
+  .viewport { position: relative; height: min(70vh, 620px); border-radius: 20px; overflow: hidden; }
+  .viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .hint { position: absolute; left: 14px; bottom: 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); pointer-events: none; }
+  .svg-drop { min-height: 110px; padding: 16px; }
+  .svg-drop .ico { font-size: 26px; }
+  .hidden { display: none !important; }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.min.js", "three/addons/": "/vendor/addons/" } }</script>
+</head>
+<body>
+<main class="t-wrap">
+  <div class="t-head">
+    <p class="eyebrow">🧊 3D tool</p>
+    <h1>3D <span class="grad">Maker.</span></h1>
+    <p>Ketik teks atau unggah logo SVG, lalu atur ketebalan, bevel, dan material. Ekspor <b>GLB</b> untuk web, AR, atau Blender, dan <b>STL</b> untuk 3D printing.</p>
+    <div class="privacy">🔒 Dirender di GPU Anda, tidak ada yang di-upload</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel viewport" id="vp"><span class="hint">drag: putar · scroll/pinch: zoom · klik kanan: geser</span></div>
+
+    <aside class="panel controls">
+      <div class="seg" id="mode"><button class="active" data-m="text">Teks</button><button data-m="svg">Logo SVG</button></div>
+      <div class="field" id="textField"><label for="txt">Teks</label><input type="text" id="txt" value="EFRINO" maxlength="24"></div>
+      <label class="drop svg-drop hidden" id="svgDrop" tabindex="0" aria-label="Pilih file SVG">
+        <input type="file"><div class="ico">✒️</div><b style="font-size:14px">Pilih / jatuhkan file .svg</b>
+      </label>
+
+      <h3>Bentuk</h3>
+      <div class="field"><label for="depth">Ketebalan <output id="depthV"></output></label><input type="range" id="depth" min="0.05" max="1.5" step="0.05" value="0.5"></div>
+      <div class="field"><label for="bevel">Bevel <output id="bevelV"></output></label><input type="range" id="bevel" min="0" max="0.12" step="0.005" value="0.03"></div>
+
+      <h3>Material</h3>
+      <div class="row">
+        <div class="field"><label for="color">Warna</label><input type="color" id="color" value="#7c5cff"></div>
+        <div class="field"><label for="bgc">Latar</label><input type="color" id="bgc" value="#0d0f18"></div>
+      </div>
+      <div class="seg" id="preset"><button class="active" data-p="plastic">Plastik</button><button data-p="metal">Metal</button><button data-p="chrome">Chrome</button><button data-p="glass">Kaca</button></div>
+      <div class="field"><label><span>Putar otomatis</span><input type="checkbox" id="spin" checked></label></div>
+
+      <h3>Ekspor</h3>
+      <div class="row">
+        <button class="btn" id="glb">GLB</button>
+        <button class="btn" id="stl">STL</button>
+        <button class="btn" id="png">PNG</button>
+      </div>
+      <p class="status-line" id="info"></p>
+    </aside>
+  </div>
+</main>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { shell, toast, dropzone, download } from './common.js';
+shell('3d-maker');
+
+const $ = id => document.getElementById(id);
+const vp = $('vp');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+vp.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+camera.position.set(0, 0.6, 8);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.minDistance = 2; controls.maxDistance = 30;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x334, 1.1));
+const key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(4, 6, 6); scene.add(key);
+const rim = new THREE.DirectionalLight(0x22d3ee, 1.6); rim.position.set(-6, 2, -4); scene.add(rim);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(12, 64), new THREE.ShadowMaterial({ opacity: 0.25 }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -1.6; scene.add(ground);
+renderer.shadowMap.enabled = true; key.castShadow = true; ground.receiveShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+
+const PRESETS = {
+  plastic: { metalness: 0.05, roughness: 0.35, transmission: 0, clearcoat: 0.6 },
+  metal: { metalness: 1, roughness: 0.35, transmission: 0, clearcoat: 0 },
+  chrome: { metalness: 1, roughness: 0.05, transmission: 0, clearcoat: 1 },
+  glass: { metalness: 0, roughness: 0.05, transmission: 1, thickness: 0.6, clearcoat: 1 },
+};
+const material = new THREE.MeshPhysicalMaterial({ color: 0x7c5cff, ...PRESETS.plastic });
+const pivot = new THREE.Group(); scene.add(pivot);
+let mesh = null, mode = 'text', svgShapes = null, font = null;
+
+const fontReady = new FontLoader().loadAsync('/vendor/fonts/helvetiker_bold.typeface.json').then(f => font = f);
+
+function buildGeometry() {
+  const depth = +$('depth').value, bevel = +$('bevel').value;
+  const opts = { depth, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 4, curveSegments: 10 };
+  if (mode === 'text') {
+    const text = $('txt').value.trim() || ' ';
+    return new TextGeometry(text, { font, size: 1, ...opts, height: depth }); // r160 names extrusion depth 'height'
+  }
+  if (!svgShapes) return null;
+  // SVG units are arbitrary: extrude at native size, then normalise.
+  const g = new THREE.ExtrudeGeometry(svgShapes, { ...opts, depth: depth * svgShapes._scale, bevelThickness: bevel * svgShapes._scale, bevelSize: bevel * 0.8 * svgShapes._scale });
+  // SVG's y axis points down; rotate (not mirror) so face winding stays correct.
+  g.rotateX(Math.PI);
+  return g;
+}
+
+function rebuild() {
+  if (mode === 'text' && !font) return;
+  const geo = buildGeometry();
+  if (mesh) { pivot.remove(mesh); mesh.geometry.dispose(); mesh = null; }
+  if (!geo) { $('info').textContent = 'Unggah file SVG untuk mulai.'; return; }
+  geo.computeBoundingBox(); geo.center();
+  // Fit the model inside ~4.5 × 3 units so it stays in view.
+  const size = new THREE.Vector3(); geo.boundingBox.getSize(size);
+  const s = Math.min(4.5 / Math.max(size.x, 0.001), 3 / Math.max(size.y, 0.001)); geo.scale(s, s, s);
+  mesh = new THREE.Mesh(geo, material); mesh.castShadow = true;
+  pivot.add(mesh);
+  $('info').textContent = `${geo.index ? geo.index.count / 3 : geo.attributes.position.count / 3 | 0} segitiga`;
+}
+
+function resize() {
+  const w = vp.clientWidth, h = vp.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(vp);
+
+renderer.setAnimationLoop(() => {
+  if ($('spin').checked) pivot.rotation.y += 0.006;
+  controls.update(); renderer.render(scene, camera);
+});
+
+const setBg = () => { renderer.setClearColor($('bgc').value); };
+const showVals = () => { $('depthV').textContent = (+$('depth').value).toFixed(2); $('bevelV').textContent = (+$('bevel').value).toFixed(3); };
+let t; const debounced = () => { showVals(); clearTimeout(t); t = setTimeout(rebuild, 60); };
+['txt', 'depth', 'bevel'].forEach(id => $(id).addEventListener('input', debounced));
+$('color').addEventListener('input', e => material.color.set(e.target.value));
+$('bgc').addEventListener('input', setBg);
+$('preset').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#preset button').forEach(x => x.classList.toggle('active', x === b));
+  Object.assign(material, { transmission: 0, thickness: 0 }, PRESETS[b.dataset.p]); material.needsUpdate = true;
+});
+$('mode').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#mode button').forEach(x => x.classList.toggle('active', x === b));
+  mode = b.dataset.m;
+  $('textField').classList.toggle('hidden', mode !== 'text'); $('svgDrop').classList.toggle('hidden', mode !== 'svg');
+  rebuild();
+});
+
+dropzone($('svgDrop'), { accept: 'image/svg+xml,.svg', maxMB: 5, onFiles: async ([f]) => {
+  try {
+    const data = new SVGLoader().parse(await f.text());
+    const shapes = data.paths.flatMap(p => SVGLoader.createShapes(p));
+    if (!shapes.length) throw new Error('no shapes');
+    const box = new THREE.Box2();
+    shapes.forEach(s => s.getPoints().forEach(p => box.expandByPoint(p)));
+    const sz = box.getSize(new THREE.Vector2());
+    shapes._scale = Math.max(sz.x, sz.y) / 4.5;
+    svgShapes = shapes; rebuild(); toast(`${shapes.length} bentuk dimuat dari ${f.name}`);
+  } catch { toast('SVG tidak berisi path yang bisa diekstrusi. Coba logo dengan fill (bukan stroke saja).', true); }
+} });
+
+const fileBase = () => (mode === 'text' ? $('txt').value.trim() || 'model' : 'logo').replace(/[^\w-]+/g, '_');
+$('glb').addEventListener('click', async () => {
+  if (!mesh) return;
+  const out = await new GLTFExporter().parseAsync(mesh, { binary: true });
+  download(new Blob([out], { type: 'model/gltf-binary' }), `${fileBase()}.glb`); toast('GLB tersimpan');
+});
+$('stl').addEventListener('click', () => {
+  if (!mesh) return;
+  const out = new STLExporter().parse(mesh, { binary: true });
+  download(new Blob([out], { type: 'model/stl' }), `${fileBase()}.stl`); toast('STL tersimpan, siap untuk slicer 3D print');
+});
+$('png').addEventListener('click', () => renderer.domElement.toBlob(b => { download(b, `${fileBase()}.png`); toast('Screenshot tersimpan'); }));
+
+setBg(); showVals();
+fontReady.then(rebuild).catch(() => toast('Font gagal dimuat.', true));
+</script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Code Generator · Efrino Tools</title>
+<meta name="description" content="Buat QR code untuk link, Wi-Fi, WhatsApp, atau teks. Warna kustom, logo di tengah, ekspor PNG dan SVG. Gratis, tanpa watermark.">
+<meta property="og:title" content="QR Generator: logo, warna, PNG & SVG">
+<meta name="theme-color" content="#07080d">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/tools.css">
+<style>
+  .stage { padding: 28px; display: grid; place-items: center; gap: 16px; min-height: 520px; }
+  #qr { width: min(100%, 420px); aspect-ratio: 1; border-radius: 18px; box-shadow: 0 30px 80px -20px rgba(124,92,255,.45); }
+  .logo-drop { min-height: 70px; padding: 12px; }
+  .hidden { display: none !important; }
+</style>
+<script src="/vendor/qrcode.js"></script>
+</head>
+<body>
+<main class="t-wrap">
+  <div class="t-head">
+    <p class="eyebrow">🔳 Generator</p>
+    <h1>QR Code <span class="grad">Generator.</span></h1>
+    <p>QR statis tanpa redirect, tanpa kedaluwarsa, tanpa pelacakan. Langsung bisa dicetak untuk menu, kartu nama, atau poster.</p>
+    <div class="privacy">🔒 Dibuat di browser Anda</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel stage"><canvas id="qr" width="1024" height="1024" aria-label="Pratinjau QR code"></canvas><p class="status-line" id="info"></p></div>
+
+    <aside class="panel controls">
+      <div class="seg" id="type"><button class="active" data-t="url">Link</button><button data-t="wifi">Wi-Fi</button><button data-t="wa">WhatsApp</button><button data-t="text">Teks</button></div>
+      <div id="f-url" class="field"><label for="url">URL</label><input type="text" id="url" value="https://efrino.web.id"></div>
+      <div id="f-wifi" class="hidden" style="display:grid;gap:12px">
+        <div class="field"><label for="ssid">Nama Wi-Fi (SSID)</label><input type="text" id="ssid"></div>
+        <div class="field"><label for="pass">Password</label><input type="text" id="pass"></div>
+        <div class="field"><label for="enc">Keamanan</label><select id="enc"><option>WPA</option><option>WEP</option><option value="nopass">Tanpa password</option></select></div>
+      </div>
+      <div id="f-wa" class="hidden" style="display:grid;gap:12px">
+        <div class="field"><label for="phone">Nomor (format 62…)</label><input type="text" id="phone" placeholder="6281234567890" inputmode="tel"></div>
+        <div class="field"><label for="msg">Pesan awal (opsional)</label><input type="text" id="msg"></div>
+      </div>
+      <div id="f-text" class="field hidden"><label for="text">Teks</label><textarea id="text" rows="3"></textarea></div>
+
+      <h3>Gaya</h3>
+      <div class="row">
+        <div class="field"><label for="fg">Warna</label><input type="color" id="fg" value="#1b1340"></div>
+        <div class="field"><label for="bg">Latar</label><input type="color" id="bg" value="#ffffff"></div>
+      </div>
+      <div class="seg" id="dot"><button class="active" data-d="square">Kotak</button><button data-d="round">Bulat</button><button data-d="dots">Titik</button></div>
+      <label class="drop logo-drop" id="logoDrop" tabindex="0" aria-label="Logo di tengah"><input type="file"><b style="font-size:13px">＋ Logo di tengah (opsional)</b></label>
+      <button class="btn block hidden" id="rmLogo">Hapus logo</button>
+
+      <h3>Ekspor</h3>
+      <div class="row"><button class="btn primary" id="png">PNG</button><button class="btn" id="svg">SVG</button><button class="btn" id="copy">Copy</button></div>
+    </aside>
+  </div>
+</main>
+
+<script type="module">
+import { shell, toast, dropzone, download, loadImage } from './common.js';
+shell('qr');
+const $ = id => document.getElementById(id);
+let type = 'url', dot = 'square', logo = null;
+
+function payload() {
+  if (type === 'url') return $('url').value.trim();
+  if (type === 'text') return $('text').value;
+  if (type === 'wa') { const n = $('phone').value.replace(/\D/g, '').replace(/^0/, '62'); return n ? `https://wa.me/${n}${$('msg').value ? '?text=' + encodeURIComponent($('msg').value) : ''}` : ''; }
+  const esc = s => s.replace(/([\\;,:"])/g, '\\$1');
+  return $('ssid').value ? `WIFI:T:${$('enc').value};S:${esc($('ssid').value)};P:${esc($('pass').value)};;` : '';
+}
+
+function matrix() {
+  const data = payload();
+  if (!data) return null;
+  // Higher error correction when a logo covers the centre.
+  const q = qrcode(0, logo ? 'H' : 'M');
+  q.addData(unescape(encodeURIComponent(data))); q.make();
+  const n = q.getModuleCount();
+  return { n, dark: (r, c) => q.isDark(r, c) };
+}
+
+const isFinder = (r, c, n) => (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
+
+function draw() {
+  const m = matrix(), cv = $('qr'), x = cv.getContext('2d'), S = cv.width;
+  x.fillStyle = $('bg').value; x.fillRect(0, 0, S, S);
+  if (!m) { $('info').textContent = 'Isi data untuk membuat QR.'; return; }
+  const quiet = 4, cell = S / (m.n + quiet * 2), o = quiet * cell, fg = $('fg').value;
+  x.fillStyle = fg;
+  const hole = logo ? Math.ceil(m.n * 0.22) : 0, h0 = (m.n - hole) / 2;
+  for (let r = 0; r < m.n; r++) for (let c = 0; c < m.n; c++) {
+    if (!m.dark(r, c) || isFinder(r, c, m.n)) continue;
+    if (logo && r >= h0 && r < h0 + hole && c >= h0 && c < h0 + hole) continue;
+    const px = o + c * cell, py = o + r * cell;
+    if (dot === 'square') x.fillRect(px, py, cell + 0.5, cell + 0.5);
+    else if (dot === 'dots') { x.beginPath(); x.arc(px + cell / 2, py + cell / 2, cell * 0.42, 0, 7); x.fill(); }
+    else { x.beginPath(); x.roundRect(px + cell * 0.06, py + cell * 0.06, cell * 0.88, cell * 0.88, cell * 0.35); x.fill(); }
+  }
+  // Finder patterns, styled to match.
+  for (const [r, c] of [[0, 0], [0, m.n - 7], [m.n - 7, 0]]) {
+    const px = o + c * cell, py = o + r * cell, rad = dot === 'square' ? 0 : cell * 1.6;
+    x.fillStyle = fg; x.beginPath(); x.roundRect(px, py, cell * 7, cell * 7, rad); x.fill();
+    x.fillStyle = $('bg').value; x.beginPath(); x.roundRect(px + cell, py + cell, cell * 5, cell * 5, rad * 0.7); x.fill();
+    x.fillStyle = fg; x.beginPath(); x.roundRect(px + cell * 2, py + cell * 2, cell * 3, cell * 3, rad * 0.5); x.fill();
+  }
+  if (logo) {
+    const box = hole * cell, lx = o + h0 * cell, ly = o + h0 * cell, pad = box * 0.1;
+    x.fillStyle = $('bg').value; x.beginPath(); x.roundRect(lx, ly, box, box, box * 0.2); x.fill();
+    const k = Math.min((box - pad * 2) / logo.width, (box - pad * 2) / logo.height);
+    x.drawImage(logo, lx + (box - logo.width * k) / 2, ly + (box - logo.height * k) / 2, logo.width * k, logo.height * k);
+  }
+  $('info').textContent = `${m.n}×${m.n} modul · koreksi error ${logo ? 'H (30%)' : 'M (15%)'}`;
+}
+
+function svgString() {
+  const m = matrix(); if (!m) return null;
+  const q = 4, N = m.n + q * 2, fg = $('fg').value, bg = $('bg').value;
+  let d = '';
+  for (let r = 0; r < m.n; r++) for (let c = 0; c < m.n; c++) if (m.dark(r, c)) d += `M${c + q} ${r + q}h1v1h-1z`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="${bg}"/><path d="${d}" fill="${fg}"/></svg>`;
+}
+
+const name = () => `qr-${type}`;
+$('type').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#type button').forEach(x => x.classList.toggle('active', x === b)); type = b.dataset.t;
+  ['url', 'wifi', 'wa', 'text'].forEach(t => $('f-' + t).classList.toggle('hidden', t !== type)); draw();
+});
+$('dot').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#dot button').forEach(x => x.classList.toggle('active', x === b)); dot = b.dataset.d; draw();
+});
+document.querySelectorAll('input, textarea, select').forEach(el => el.addEventListener('input', draw));
+dropzone($('logoDrop'), { accept: 'image/*', maxMB: 5, onFiles: async ([f]) => { logo = await loadImage(URL.createObjectURL(f)); $('rmLogo').classList.remove('hidden'); draw(); } });
+$('rmLogo').addEventListener('click', () => { logo = null; $('rmLogo').classList.add('hidden'); draw(); });
+$('png').addEventListener('click', () => $('qr').toBlob(b => { download(b, name() + '.png'); toast('PNG 1024px tersimpan'); }));
+$('svg').addEventListener('click', () => {
+  const s = svgString(); if (!s) return;
+  download(new Blob([s], { type: 'image/svg+xml' }), name() + '.svg');
+  toast(logo || dot !== 'square' ? 'SVG tersimpan (versi vektor polos tanpa logo/gaya)' : 'SVG tersimpan');
+});
+$('copy').addEventListener('click', () => $('qr').toBlob(async b => {
+  try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); toast('QR disalin ke clipboard'); }
+  catch { toast('Browser tidak mengizinkan copy gambar.', true); }
+}));
+draw();
+</script>
+</body>
+</html>

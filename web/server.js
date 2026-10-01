@@ -11,6 +11,7 @@ const PROVIDERS = [
 ].filter(p => p.key);
 const DOMAIN = process.env.DOMAIN || 'efrino.web.id';
 const PUBLIC = path.join(__dirname, 'public');
+const TOOLS = path.join(PUBLIC, 'tools');
 
 // Subdomains that point to projects hosted elsewhere.
 const REDIRECTS = {
@@ -28,6 +29,7 @@ const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.ico': 'image/x-icon', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8',
+  '.webmanifest': 'application/manifest+json', '.xml': 'application/xml',
 };
 
 const PROFILE = fs.readFileSync(path.join(__dirname, 'profile.txt'), 'utf8');
@@ -172,26 +174,34 @@ function health(res) {
   send(res, 200, { ok: true, model: PROVIDERS.map(p => p.name).join(' → ') || 'none', ready: PROVIDERS.length > 0 });
 }
 
-function serveStatic(req, res, file) {
-  const p = path.normalize(path.join(PUBLIC, file));
-  if (!p.startsWith(PUBLIC)) return send(res, 403, 'Forbidden', 'text/plain');
-  fs.stat(p, (err, st) => {
-    if (err || !st.isFile()) {
+function serveStatic(req, res, file, roots = [PUBLIC]) {
+  // Try each root in order (tools subdomain falls back to shared assets).
+  const tryRoot = i => {
+    if (i >= roots.length) {
       return fs.createReadStream(path.join(PUBLIC, '404.html')).on('open', function () { res.writeHead(404, { 'Content-Type': MIME['.html'] }); this.pipe(res); });
     }
-    const ext = path.extname(p);
-    res.writeHead(200, {
-      'Content-Type': MIME[ext] || 'application/octet-stream',
-      'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=86400',
+    const p = path.normalize(path.join(roots[i], file));
+    if (!p.startsWith(roots[i])) return send(res, 403, 'Forbidden', 'text/plain');
+    fs.stat(p, (err, st) => {
+      if (err || !st.isFile()) return tryRoot(i + 1);
+      const ext = path.extname(p);
+      res.writeHead(200, {
+        'Content-Type': MIME[ext] || 'application/octet-stream',
+        // Vendored libraries are versioned, so they can be cached hard.
+        'Cache-Control': ext === '.html' ? 'no-cache' : file.startsWith('/vendor/') ? 'public, max-age=604800, immutable' : 'public, max-age=3600',
+      });
+      fs.createReadStream(p).pipe(res);
     });
-    fs.createReadStream(p).pipe(res);
-  });
+  };
+  tryRoot(0);
 }
 
 http.createServer((req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
 
   const host = (req.headers.host || '').split(':')[0].toLowerCase();
   const sub = host.endsWith(`.${DOMAIN}`) ? host.slice(0, -DOMAIN.length - 1) : '';
@@ -205,6 +215,12 @@ http.createServer((req, res) => {
   if (url.pathname === '/api/health') return health(res);
 
   let file = decodeURIComponent(url.pathname);
+  if (sub === 'tools') {
+    if (file === '/' || file.endsWith('/')) file += 'index.html';
+    // Pretty URLs: /bg-remover -> /bg-remover.html
+    if (!path.extname(file)) file += '.html';
+    return serveStatic(req, res, file, [TOOLS, PUBLIC]);
+  }
   if (file === '/') file = sub === 'ai' ? '/playground.html' : '/index.html';
   serveStatic(req, res, file);
 }).listen(PORT, () => console.log(`listening on :${PORT} (AI: ${PROVIDERS.map(p => p.name).join(" → ") || "not configured"})`));

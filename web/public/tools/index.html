@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Efrino Tools · Free, Private, In-Browser</title>
+<meta name="description" content="Tools gratis tanpa upload: Background Remover AI, 3D Maker, Image Compressor, QR Generator. Semua berjalan di browser Anda.">
+<meta property="og:title" content="Efrino Tools: free, private, in-browser">
+<meta property="og:description" content="Background Remover AI, 3D Maker, Image Compressor, QR Generator. File tidak pernah di-upload.">
+<meta property="og:url" content="https://tools.efrino.web.id">
+<meta name="theme-color" content="#07080d">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/tools.css">
+</head>
+<body>
+<main class="t-wrap">
+  <div class="t-head">
+    <p class="eyebrow">efrino.tools</p>
+    <h1>Tools gratis yang <span class="grad">menghormati privasi.</span></h1>
+    <p>Semua tool berjalan 100% di browser Anda dengan WebAssembly, WebGPU, dan Canvas. Tidak ada upload, tidak ada akun, tidak ada watermark.</p>
+    <div class="privacy">🔒 File Anda tidak pernah meninggalkan perangkat ini</div>
+  </div>
+  <div class="tool-grid" id="grid"></div>
+</main>
+<script type="module">
+  import { shell, TOOLS } from './common.js';
+  shell();
+  const grid = document.getElementById('grid');
+  grid.innerHTML = TOOLS.map(t => `
+    <a class="tilt tool-card" href="/${t.slug}">
+      <div class="emoji">${t.emoji}</div>
+      <h3>${t.name}</h3>
+      <p>${t.desc}</p>
+      <span class="pill">${t.tag}</span>
+      <span class="go">Buka tool →</span>
+    </a>`).join('');
+  if (matchMedia('(pointer: fine)').matches) document.addEventListener('pointermove', e => {
+    document.querySelectorAll('.tilt').forEach(c => {
+      const r = c.getBoundingClientRect(), inside = e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom;
+      if (!inside) { c.style.transform = ''; return; }
+      const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      c.style.transform = `rotateY(${(x - .5) * 10}deg) rotateX(${(.5 - y) * 10}deg)`;
+      c.style.setProperty('--mx', `${x * 100}%`); c.style.setProperty('--my', `${y * 100}%`);
+    });
+  });
+</script>
+</body>
+</html>

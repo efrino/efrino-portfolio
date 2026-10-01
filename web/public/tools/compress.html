@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Compressor & Converter · Efrino Tools</title>
+<meta name="description" content="Kompres dan konversi banyak gambar sekaligus ke WebP, JPEG, atau PNG. Gratis, tanpa upload, langsung di browser.">
+<meta property="og:title" content="Image Compressor: WebP, JPEG, PNG, tanpa upload">
+<meta name="theme-color" content="#07080d">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/tools.css">
+<style>
+  .stage { padding: 16px; display: grid; gap: 14px; }
+  .drop.small { min-height: 150px; }
+  .list { display: grid; gap: 10px; }
+  .item { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.02); }
+  .item img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; }
+  .item .name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .meta { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .item .save { color: var(--ok); }
+  .item .save.worse { color: #fbbf24; }
+  .item button { padding: 8px 12px; font-size: 13px; }
+  .summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .summary b { color: var(--ok); font-size: 18px; }
+  @media (max-width: 600px) { .item { grid-template-columns: 52px 1fr; } .item img { width: 52px; height: 52px; } .item button { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<main class="t-wrap">
+  <div class="t-head">
+    <p class="eyebrow">🗜️ Image tool</p>
+    <h1>Image <span class="grad">Compressor.</span></h1>
+    <p>Kecilkan ukuran foto untuk web, WhatsApp, atau lampiran email. Proses banyak file sekaligus, ubah format, dan batasi resolusi maksimal.</p>
+    <div class="privacy">🔒 Diproses di browser, tidak ada upload</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel stage">
+      <label class="drop small" id="drop" tabindex="0" aria-label="Pilih gambar">
+        <input type="file">
+        <div class="ico">📁</div>
+        <b>Jatuhkan gambar atau klik untuk memilih</b>
+        <span>Bisa banyak file sekaligus · JPG, PNG, WebP, GIF, BMP · maks 30 MB per file</span>
+      </label>
+      <div class="summary" id="summary" hidden><span id="sumText"></span><span><b id="sumSave"></b></span></div>
+      <div class="list" id="list"></div>
+    </div>
+
+    <aside class="panel controls">
+      <h3>Format output</h3>
+      <div class="seg" id="fmt"><button class="active" data-f="image/webp">WebP</button><button data-f="image/jpeg">JPEG</button><button data-f="image/png">PNG</button></div>
+      <div class="field"><label for="q">Kualitas <output id="qV"></output></label><input type="range" id="q" min="0.3" max="1" step="0.01" value="0.8"></div>
+      <div class="field"><label for="max">Sisi terpanjang maks.</label>
+        <select id="max"><option value="0">Asli</option><option value="3840">3840 px (4K)</option><option value="2560">2560 px</option><option value="1920" selected>1920 px (Full HD)</option><option value="1280">1280 px</option><option value="800">800 px</option></select>
+      </div>
+      <button class="btn primary block" id="all" disabled>⬇ Download semua</button>
+      <button class="btn block" id="clear" disabled>Bersihkan</button>
+      <p class="status-line">Pengaturan baru langsung diterapkan ke semua file. PNG bersifat lossless, jadi slider kualitas tidak berpengaruh.</p>
+    </aside>
+  </div>
+</main>
+
+<script type="module">
+import { shell, toast, dropzone, download, baseName, fmtBytes, canvasToBlob } from './common.js';
+shell('compress');
+const $ = id => document.getElementById(id);
+let items = [], fmt = 'image/webp';
+const ext = () => fmt.split('/')[1].replace('jpeg', 'jpg');
+
+async function compress(it) {
+  const bmp = await createImageBitmap(it.file);
+  const max = +$('max').value, k = max && Math.max(bmp.width, bmp.height) > max ? max / Math.max(bmp.width, bmp.height) : 1;
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  const x = c.getContext('2d');
+  if (fmt === 'image/jpeg') { x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); }
+  x.imageSmoothingQuality = 'high'; x.drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
+  it.out = await canvasToBlob(c, fmt, +$('q').value); it.w = c.width; it.h = c.height;
+}
+
+function row(it) {
+  const pct = Math.round((1 - it.out.size / it.file.size) * 100);
+  it.el.innerHTML = `<img src="${it.thumb}" alt="">
+    <div style="min-width:0"><div class="name">${it.file.name.replace(/</g, '&lt;')}</div>
+    <div class="meta">${fmtBytes(it.file.size)} → ${fmtBytes(it.out.size)} · ${it.w}×${it.h} · <span class="save ${pct < 0 ? 'worse' : ''}">${pct >= 0 ? '−' + pct : '+' + -pct}%</span></div></div>
+    <button class="btn">⬇ ${ext().toUpperCase()}</button>`;
+  it.el.querySelector('button').onclick = () => download(it.out, `${baseName(it.file)}.${ext()}`);
+}
+
+function summary() {
+  const done = items.filter(i => i.out);
+  $('summary').hidden = !done.length; $('all').disabled = !done.length; $('clear').disabled = !items.length;
+  if (!done.length) return;
+  const a = done.reduce((s, i) => s + i.file.size, 0), b = done.reduce((s, i) => s + i.out.size, 0);
+  $('sumText').textContent = `${done.length} file · ${fmtBytes(a)} → ${fmtBytes(b)}`;
+  $('sumSave').textContent = `hemat ${Math.max(0, Math.round((1 - b / a) * 100))}%`;
+}
+
+async function run(list) {
+  for (const it of list) {
+    it.el.innerHTML = `<img src="${it.thumb}" alt=""><div class="meta">Memproses ${it.file.name.replace(/</g, '&lt;')}…</div>`;
+    try { await compress(it); row(it); } catch { it.el.innerHTML = `<div class="meta" style="grid-column:1/-1;color:#fca5a5">${it.file.name.replace(/</g, '&lt;')}: format tidak didukung browser ini.</div>`; }
+    summary();
+  }
+}
+
+dropzone($('drop'), { accept: 'image/*', multiple: true, maxMB: 30, onFiles: files => {
+  const fresh = files.map(file => { const el = document.createElement('div'); el.className = 'item'; $('list').prepend(el); return { file, el, thumb: URL.createObjectURL(file) }; });
+  items.push(...fresh); run(fresh);
+} });
+
+let rt; const rerun = () => { $('qV').textContent = Math.round($('q').value * 100) + '%'; clearTimeout(rt); rt = setTimeout(() => run(items), 250); };
+$('q').addEventListener('input', rerun); $('max').addEventListener('change', rerun);
+$('fmt').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#fmt button').forEach(x => x.classList.toggle('active', x === b)); fmt = b.dataset.f; rerun();
+});
+$('all').addEventListener('click', async () => {
+  const done = items.filter(i => i.out);
+  for (const it of done) { download(it.out, `${baseName(it.file)}.${ext()}`); await new Promise(r => setTimeout(r, 250)); }
+  toast(`${done.length} file diunduh`);
+});
+$('clear').addEventListener('click', () => { items.forEach(i => URL.revokeObjectURL(i.thumb)); items = []; $('list').innerHTML = ''; summary(); });
+$('qV').textContent = '80%';
+</script>
+</body>
+</html>

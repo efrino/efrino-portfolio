@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Background Remover AI · Efrino Tools</title>
+<meta name="description" content="Hapus background foto otomatis dengan AI, gratis, tanpa upload. Proses langsung di browser Anda.">
+<meta property="og:title" content="Background Remover AI: gratis & tanpa upload">
+<meta name="theme-color" content="#07080d">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/tools.css">
+<style>
+  .stage { padding: 16px; display: grid; gap: 14px; }
+  .compare { position: relative; border-radius: 14px; overflow: hidden; user-select: none; touch-action: none; }
+  .compare img { display: block; width: 100%; height: auto; max-height: 70vh; object-fit: contain; }
+  .compare .after { position: absolute; inset: 0; clip-path: inset(0 0 0 var(--split, 50%)); }
+  .compare .after img { height: 100%; }
+  .compare .handle { position: absolute; top: 0; bottom: 0; left: var(--split, 50%); width: 2px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,.6); }
+  .compare .handle::after { content: '⇆'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 36px; height: 36px; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font-size: 16px; }
+  .tag-l, .tag-r { position: absolute; top: 12px; font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,.6); }
+  .tag-l { left: 12px; } .tag-r { right: 12px; }
+  .bg-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .bg-swatches button { width: 34px; height: 34px; border-radius: 9px; border: 2px solid var(--line); cursor: pointer; }
+  .bg-swatches button.active { border-color: var(--accent2); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<main class="t-wrap">
+  <div class="t-head">
+    <p class="eyebrow">🪄 AI tool</p>
+    <h1>Background <span class="grad">Remover.</span></h1>
+    <p>Model segmentasi AI berjalan langsung di browser Anda (WebGPU jika tersedia, WebAssembly sebagai cadangan). Pemakaian pertama mengunduh model sekitar 40 MB, lalu tersimpan di cache.</p>
+    <div class="privacy">🔒 Foto Anda tidak pernah di-upload</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel stage">
+      <label class="drop" id="drop" tabindex="0" aria-label="Pilih atau jatuhkan foto">
+        <input type="file">
+        <div class="ico">🖼️</div>
+        <b>Jatuhkan foto di sini atau klik untuk memilih</b>
+        <span>JPG, PNG, WebP · maks 25 MB · atau tekan <span class="kbd">Ctrl</span> + <span class="kbd">V</span></span>
+      </label>
+      <div id="work" class="hidden">
+        <div class="compare checker" id="compare">
+          <img id="before" alt="Foto asli">
+          <div class="after checker" id="afterWrap"><canvas id="out" style="display:block;width:100%;height:100%;object-fit:contain"></canvas></div>
+          <div class="handle"></div>
+          <span class="tag-l">Asli</span><span class="tag-r">Hasil</span>
+        </div>
+        <div id="prog" style="margin-top:14px">
+          <div class="progress"><i id="bar"></i></div>
+          <p class="status-line" id="status" style="margin-top:8px">Menyiapkan model…</p>
+        </div>
+      </div>
+    </div>
+
+    <aside class="panel controls">
+      <h3>Latar belakang</h3>
+      <div class="bg-swatches" id="swatches">
+        <button class="active checker" data-bg="transparent" title="Transparan" aria-label="Transparan"></button>
+        <button style="background:#fff" data-bg="#ffffff" aria-label="Putih"></button>
+        <button style="background:#000" data-bg="#000000" aria-label="Hitam"></button>
+        <button style="background:#2563eb" data-bg="#2563eb" aria-label="Biru"></button>
+        <button style="background:#dc2626" data-bg="#dc2626" aria-label="Merah"></button>
+        <button style="background:linear-gradient(135deg,#7c5cff,#22d3ee)" data-bg="grad" aria-label="Gradien"></button>
+      </div>
+      <div class="field"><label for="custom">Warna kustom</label><input type="color" id="custom" value="#f5f5f5"></div>
+      <h3>Ekspor</h3>
+      <div class="seg" id="fmt"><button class="active" data-f="image/png">PNG</button><button data-f="image/webp">WebP</button><button data-f="image/jpeg">JPG</button></div>
+      <button class="btn primary block" id="dl" disabled>⬇ Download</button>
+      <button class="btn block" id="again" disabled>↺ Foto lain</button>
+      <p class="status-line">Tips: geser garis tengah untuk membandingkan sebelum & sesudah.</p>
+    </aside>
+  </div>
+</main>
+
+<script type="module">
+import { shell, toast, dropzone, download, baseName, loadImage, canvasToBlob, fmtBytes } from './common.js';
+shell('bg-remover');
+
+const $ = id => document.getElementById(id);
+let removeBackground, cutout = null, srcFile = null, bg = 'transparent', fmt = 'image/png';
+
+async function lib() {
+  // Loaded lazily so the page itself stays fast.
+  if (!removeBackground) ({ removeBackground } = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm'));
+  return removeBackground;
+}
+
+function render() {
+  if (!cutout) return;
+  const c = $('out'), x = c.getContext('2d');
+  c.width = cutout.width; c.height = cutout.height;
+  x.clearRect(0, 0, c.width, c.height);
+  if (bg === 'grad') { const g = x.createLinearGradient(0, 0, c.width, c.height); g.addColorStop(0, '#7c5cff'); g.addColorStop(1, '#22d3ee'); x.fillStyle = g; x.fillRect(0, 0, c.width, c.height); }
+  else if (bg !== 'transparent') { x.fillStyle = bg; x.fillRect(0, 0, c.width, c.height); }
+  x.drawImage(cutout, 0, 0);
+}
+
+async function process(file) {
+  srcFile = file; cutout = null;
+  $('drop').classList.add('hidden'); $('work').classList.remove('hidden'); $('prog').classList.remove('hidden');
+  $('dl').disabled = true; $('again').disabled = true;
+  $('before').src = URL.createObjectURL(file);
+  const c = $('out'); c.width = 1; c.height = 1;
+  $('compare').style.setProperty('--split', '100%');
+  const t0 = performance.now();
+  try {
+    $('status').textContent = 'Memuat library AI…';
+    const rb = await lib();
+    const blob = await rb(file, {
+      device: 'gpu',
+      output: { format: 'image/png' },
+      progress: (key, cur, total) => {
+        const pct = total ? Math.round(cur / total * 100) : 0;
+        $('bar').style.width = pct + '%';
+        $('status').textContent = key.startsWith('fetch') ? `Mengunduh model AI… ${pct}% (sekali saja)` : `Memproses… ${pct}%`;
+      },
+    });
+    cutout = await loadImage(URL.createObjectURL(blob));
+    render();
+    $('prog').classList.add('hidden');
+    animateSplit();
+    $('dl').disabled = false; $('again').disabled = false;
+    toast(`Selesai dalam ${((performance.now() - t0) / 1000).toFixed(1)} detik ✨`);
+  } catch (e) {
+    console.error(e);
+    toast('Gagal memproses foto. Coba foto lain atau browser terbaru (Chrome/Edge).', true);
+    reset();
+  }
+}
+
+function animateSplit() {
+  const el = $('compare'); let t = 0;
+  (function step() { t += 0.025; const v = 100 - 50 * (1 - Math.pow(1 - Math.min(t, 1), 3)); el.style.setProperty('--split', v + '%'); if (t < 1) requestAnimationFrame(step); })();
+}
+
+function reset() {
+  cutout = null; $('work').classList.add('hidden'); $('drop').classList.remove('hidden');
+  $('dl').disabled = true; $('again').disabled = true; $('bar').style.width = '0';
+}
+
+// Before/after slider
+const cmp = $('compare');
+const setSplit = e => { const r = cmp.getBoundingClientRect(); cmp.style.setProperty('--split', Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)) + '%'); };
+cmp.addEventListener('pointerdown', e => { if (!cutout) return; cmp.setPointerCapture(e.pointerId); setSplit(e); });
+cmp.addEventListener('pointermove', e => { if (cmp.hasPointerCapture(e.pointerId)) setSplit(e); });
+
+$('swatches').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#swatches button').forEach(x => x.classList.toggle('active', x === b));
+  bg = b.dataset.bg; render();
+});
+$('custom').addEventListener('input', e => { document.querySelectorAll('#swatches button').forEach(x => x.classList.remove('active')); bg = e.target.value; render(); });
+$('fmt').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#fmt button').forEach(x => x.classList.toggle('active', x === b)); fmt = b.dataset.f;
+  if (fmt === 'image/jpeg' && bg === 'transparent') toast('JPG tidak mendukung transparansi, latar akan putih.');
+});
+$('dl').addEventListener('click', async () => {
+  let c = $('out');
+  if (fmt === 'image/jpeg' && bg === 'transparent') { const t = document.createElement('canvas'); t.width = c.width; t.height = c.height; const x = t.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, t.width, t.height); x.drawImage(c, 0, 0); c = t; }
+  const blob = await canvasToBlob(c, fmt, 0.92);
+  download(blob, `${baseName(srcFile)}-nobg.${fmt.split('/')[1].replace('jpeg', 'jpg')}`);
+  toast(`Tersimpan · ${fmtBytes(blob.size)}`);
+});
+$('again').addEventListener('click', reset);
+
+dropzone($('drop'), { accept: 'image/png,image/jpeg,image/webp', onFiles: ([f]) => process(f) });
+// Warm up the library in the background once the page is idle.
+(window.requestIdleCallback || setTimeout)(() => lib().catch(() => {}));
+</script>
+</body>
+</html>
