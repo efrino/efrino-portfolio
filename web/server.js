@@ -2,6 +2,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 const PORT = process.env.PORT || 3000;
 // AI runs on free-tier hosted APIs (never on this VPS). Providers are tried in order.
@@ -185,12 +186,16 @@ function serveStatic(req, res, file, roots = [PUBLIC]) {
     fs.stat(p, (err, st) => {
       if (err || !st.isFile()) return tryRoot(i + 1);
       const ext = path.extname(p);
+      const gzip = st.size > 1024 && /\.(html|js|css|json|svg|xml|txt|webmanifest)$/.test(p) && /\bgzip\b/.test(req.headers['accept-encoding'] || '');
       res.writeHead(200, {
         'Content-Type': MIME[ext] || 'application/octet-stream',
         // Vendored libraries are versioned, so they can be cached hard.
         'Cache-Control': ext === '.html' ? 'no-cache' : file.startsWith('/vendor/') ? 'public, max-age=604800, immutable' : 'public, max-age=3600',
+        Vary: 'Accept-Encoding',
+        ...(gzip ? { 'Content-Encoding': 'gzip' } : { 'Content-Length': st.size }),
       });
-      fs.createReadStream(p).pipe(res);
+      const stream = fs.createReadStream(p);
+      gzip ? stream.pipe(zlib.createGzip({ level: 6 })).pipe(res) : stream.pipe(res);
     });
   };
   tryRoot(0);

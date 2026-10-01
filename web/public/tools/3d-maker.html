@@ -144,6 +144,9 @@ function rebuild() {
 function resize() {
   const w = vp.clientWidth, h = vp.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  // Back the camera off on narrow screens so a 4.5-unit-wide model always fits.
+  const fitDist = (4.5 / 2 * 1.25) / (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
+  camera.position.setLength(Math.max(8, fitDist));
 }
 new ResizeObserver(resize).observe(vp);
 
