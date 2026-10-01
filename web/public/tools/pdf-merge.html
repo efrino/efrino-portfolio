@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Merge: Gabung PDF Gratis · Efrino Tools</title>
+<meta name="description" content="Gabungkan banyak PDF dan gambar menjadi satu PDF. Atur urutan, pilih halaman, tanpa upload, gratis, langsung di browser.">
+<meta property="og:title" content="PDF Merge: gabung PDF tanpa upload">
+<meta name="theme-color" content="#07080d">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/tools.css">
+<style>
+  .stage { padding: 16px; display: grid; gap: 14px; }
+  .drop.small { min-height: 150px; }
+  .list { display: grid; gap: 10px; }
+  .doc { display: grid; grid-template-columns: 28px 44px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.02); transition: border-color .2s, opacity .2s; }
+  .doc.dragging { opacity: .4; }
+  .doc.over { border-color: var(--accent); }
+  .grip { cursor: grab; color: var(--muted); font-size: 18px; text-align: center; user-select: none; }
+  .badge { width: 44px; height: 54px; border-radius: 8px; display: grid; place-items: center; font-family: var(--mono); font-size: 10px; font-weight: 600; color: #fff; background: linear-gradient(160deg, #ef4444, #b91c1c); }
+  .badge.img { background: linear-gradient(160deg, var(--accent), var(--accent2)); }
+  .doc .name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .doc .meta { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .doc .range { margin-top: 6px; width: 100%; max-width: 220px; background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; color: var(--text); font-family: var(--mono); font-size: 12px; outline: none; }
+  .doc .range:focus { border-color: var(--accent); }
+  .doc .range.bad { border-color: #f87171; }
+  .acts { display: flex; gap: 4px; }
+  .acts button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; }
+  .acts button:hover { color: var(--text); border-color: rgba(255,255,255,.25); }
+  .total { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .total b { color: var(--text); }
+  @media (max-width: 600px) { .doc { grid-template-columns: 44px 1fr; } .grip { display: none; } .acts { grid-column: 1 / -1; justify-content: flex-end; } }
+</style>
+<script src="/vendor/pdf-lib.min.js"></script>
+</head>
+<body>
+<main class="t-wrap">
+  <div class="t-head">
+    <p class="eyebrow">📑 Document tool</p>
+    <h1>PDF <span class="grad">Merge.</span></h1>
+    <p>Gabungkan beberapa PDF, plus foto/scan JPG atau PNG, menjadi satu file. Atur urutan dan pilih halaman yang diambil dari tiap file. Cocok untuk berkas lamaran, laporan, atau dokumen administrasi.</p>
+    <div class="privacy">🔒 Dokumen Anda tidak pernah di-upload</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel stage">
+      <label class="drop small" id="drop" tabindex="0" aria-label="Pilih file PDF atau gambar">
+        <input type="file">
+        <div class="ico">📑</div>
+        <b>Jatuhkan PDF / gambar atau klik untuk memilih</b>
+        <span>Bisa banyak file · PDF, JPG, PNG · maks 100 MB per file</span>
+      </label>
+      <div class="list" id="list"></div>
+    </div>
+
+    <aside class="panel controls">
+      <h3>Hasil</h3>
+      <div class="total"><span>File</span><b id="nFiles">0</b></div>
+      <div class="total"><span>Total halaman</span><b id="nPages">0</b></div>
+      <div class="field"><label for="fname">Nama file</label><input type="text" id="fname" value="gabungan"></div>
+      <div class="field"><label for="fit">Ukuran halaman gambar</label>
+        <select id="fit"><option value="a4">A4 (gambar dipaskan)</option><option value="orig">Ukuran asli gambar</option></select>
+      </div>
+      <button class="btn primary block" id="merge" disabled>⚡ Gabungkan & Download</button>
+      <button class="btn block" id="clear" disabled>Bersihkan</button>
+      <p class="status-line" id="status">Rentang halaman: kosongkan untuk semua, atau tulis mis. <code>1-3, 5, 8-</code></p>
+    </aside>
+  </div>
+</main>
+
+<script type="module">
+import { shell, toast, dropzone, download, fmtBytes } from './common.js';
+shell('pdf-merge');
+const $ = id => document.getElementById(id);
+const { PDFDocument, PageSizes } = window.PDFLib;
+let docs = [], uid = 0;
+
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// "1-3, 5, 8-" -> zero-based page indices; null when invalid.
+function parseRange(str, count) {
+  if (!str.trim()) return [...Array(count).keys()];
+  const out = [];
+  for (const part of str.split(',').map(s => s.trim()).filter(Boolean)) {
+    const m = part.match(/^(\d*)\s*-\s*(\d*)$/) || part.match(/^(\d+)$/);
+    if (!m) return null;
+    let a, b;
+    if (m.length === 2) a = b = +m[1];
+    else { a = m[1] ? +m[1] : 1; b = m[2] ? +m[2] : count; }
+    if (a < 1 || b > count || a > b) return null;
+    for (let i = a; i <= b; i++) out.push(i - 1);
+  }
+  return out;
+}
+
+function render() {
+  const list = $('list');
+  list.innerHTML = docs.map(d => `
+    <div class="doc" draggable="true" data-id="${d.id}">
+      <div class="grip" title="Seret untuk mengurutkan">⠿</div>
+      <div class="badge ${d.kind === 'img' ? 'img' : ''}">${d.kind === 'img' ? 'IMG' : 'PDF'}</div>
+      <div style="min-width:0">
+        <div class="name">${esc(d.file.name)}</div>
+        <div class="meta">${d.kind === 'img' ? '1 halaman' : `${d.count} halaman`} · ${fmtBytes(d.file.size)}${d.encrypted ? ' · 🔒 terenkripsi' : ''}</div>
+        ${d.kind === 'pdf' && d.count > 1 ? `<input class="range" placeholder="semua halaman (1-${d.count})" value="${esc(d.range)}" aria-label="Rentang halaman">` : ''}
+      </div>
+      <div class="acts"><button data-a="up" aria-label="Naik">↑</button><button data-a="down" aria-label="Turun">↓</button><button data-a="rm" aria-label="Hapus">✕</button></div>
+    </div>`).join('');
+  totals();
+}
+
+function totals() {
+  let pages = 0, bad = false;
+  for (const d of docs) {
+    if (d.kind === 'img') { pages++; continue; }
+    const r = parseRange(d.range, d.count);
+    if (!r) bad = true; else pages += r.length;
+  }
+  $('nFiles').textContent = docs.length; $('nPages').textContent = bad ? '—' : pages;
+  $('merge').disabled = !docs.length || bad || !pages; $('clear').disabled = !docs.length;
+}
+
+async function add(files) {
+  for (const file of files) {
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    const d = { id: ++uid, file, kind: isPdf ? 'pdf' : 'img', range: '', count: 1 };
+    try {
+      d.bytes = await file.arrayBuffer();
+      if (isPdf) {
+        const pdf = await PDFDocument.load(d.bytes, { ignoreEncryption: true });
+        d.count = pdf.getPageCount(); d.encrypted = pdf.isEncrypted;
+        if (d.encrypted) toast(`${file.name} terenkripsi, hasilnya mungkin kosong. Buka kuncinya dulu.`, true);
+      }
+      docs.push(d);
+    } catch { toast(`${file.name} rusak atau tidak bisa dibaca.`, true); }
+  }
+  render();
+}
+
+async function merge() {
+  const btn = $('merge'); btn.disabled = true; const t0 = performance.now();
+  try {
+    const out = await PDFDocument.create();
+    for (const [i, d] of docs.entries()) {
+      $('status').textContent = `Memproses ${i + 1}/${docs.length}: ${d.file.name}`;
+      if (d.kind === 'pdf') {
+        const src = await PDFDocument.load(d.bytes, { ignoreEncryption: true });
+        const pages = await out.copyPages(src, parseRange(d.range, d.count));
+        pages.forEach(p => out.addPage(p));
+      } else {
+        const img = /png$/i.test(d.file.type) ? await out.embedPng(d.bytes) : await out.embedJpg(await toJpeg(d));
+        const a4 = $('fit').value === 'a4';
+        const [W, H] = a4 ? (img.width > img.height ? [PageSizes.A4[1], PageSizes.A4[0]] : PageSizes.A4) : [img.width, img.height];
+        const k = a4 ? Math.min((W - 48) / img.width, (H - 48) / img.height) : 1;
+        const page = out.addPage([W, H]);
+        page.drawImage(img, { x: (W - img.width * k) / 2, y: (H - img.height * k) / 2, width: img.width * k, height: img.height * k });
+      }
+      await new Promise(r => setTimeout(r)); // keep the UI responsive
+    }
+    out.setTitle($('fname').value || 'gabungan'); out.setProducer('tools.efrino.web.id'); out.setCreator('Efrino Tools · PDF Merge');
+    const bytes = await out.save();
+    const name = ($('fname').value.trim() || 'gabungan').replace(/[^\w\- ]+/g, '_') + '.pdf';
+    download(new Blob([bytes], { type: 'application/pdf' }), name);
+    $('status').textContent = `✓ ${out.getPageCount()} halaman · ${fmtBytes(bytes.length)} · ${((performance.now() - t0) / 1000).toFixed(1)} detik`;
+    toast('PDF berhasil digabung ✨');
+  } catch (e) {
+    console.error(e); toast('Gagal menggabungkan. Ada file yang tidak didukung.', true); $('status').textContent = 'Gagal.';
+  }
+  totals();
+}
+
+// WebP/GIF/etc. are re-encoded to JPEG so pdf-lib can embed them.
+async function toJpeg(d) {
+  if (/jpe?g$/i.test(d.file.type)) return d.bytes;
+  const bmp = await createImageBitmap(d.file), c = document.createElement('canvas');
+  c.width = bmp.width; c.height = bmp.height;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0);
+  return (await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92))).arrayBuffer();
+}
+
+const list = $('list');
+list.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const i = docs.findIndex(d => d.id === +b.closest('.doc').dataset.id);
+  if (b.dataset.a === 'rm') docs.splice(i, 1);
+  else { const j = i + (b.dataset.a === 'up' ? -1 : 1); if (j < 0 || j >= docs.length) return; [docs[i], docs[j]] = [docs[j], docs[i]]; }
+  render();
+});
+list.addEventListener('input', e => {
+  if (!e.target.classList.contains('range')) return;
+  const d = docs.find(d => d.id === +e.target.closest('.doc').dataset.id);
+  d.range = e.target.value; e.target.classList.toggle('bad', !parseRange(d.range, d.count)); totals();
+});
+// Drag to reorder
+let dragId = null;
+list.addEventListener('dragstart', e => { const el = e.target.closest('.doc'); if (!el) return; dragId = +el.dataset.id; el.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+list.addEventListener('dragend', () => { dragId = null; render(); });
+list.addEventListener('dragover', e => { if (dragId === null) return; e.preventDefault(); list.querySelectorAll('.doc').forEach(x => x.classList.toggle('over', x === e.target.closest('.doc'))); });
+list.addEventListener('drop', e => {
+  if (dragId === null) return; e.preventDefault(); e.stopPropagation();
+  const target = e.target.closest('.doc'); if (!target) return;
+  const from = docs.findIndex(d => d.id === dragId), to = docs.findIndex(d => d.id === +target.dataset.id);
+  docs.splice(to, 0, docs.splice(from, 1)[0]); dragId = null; render();
+});
+
+dropzone($('drop'), { accept: 'application/pdf,.pdf,image/jpeg,image/png,image/webp', multiple: true, maxMB: 100, onFiles: add });
+$('merge').addEventListener('click', merge);
+$('clear').addEventListener('click', () => { docs = []; render(); $('status').textContent = 'Siap.'; });
+</script>
+</body>
+</html>

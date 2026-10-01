@@ -3,6 +3,7 @@ export const TOOLS = [
   { slug: 'bg-remover', emoji: '🪄', name: 'Background Remover', desc: 'Hapus background foto otomatis dengan AI, langsung di browser. Ekspor PNG transparan atau ganti warna latar.', tag: 'AI · WebGPU/WASM' },
   { slug: '3d-maker', emoji: '🧊', name: '3D Maker', desc: 'Ubah teks atau logo SVG jadi model 3D dengan bevel & material. Ekspor GLB untuk web/AR atau STL untuk 3D print.', tag: 'Three.js · GLB · STL' },
   { slug: 'compress', emoji: '🗜️', name: 'Image Compressor', desc: 'Kompres & konversi banyak gambar sekaligus ke WebP, JPEG, atau PNG. Atur kualitas dan ukuran maksimal.', tag: 'Batch · WebP · JPEG' },
+  { slug: 'pdf-merge', emoji: '📑', name: 'PDF Merge', desc: 'Gabungkan banyak PDF & foto jadi satu file. Atur urutan dan pilih halaman. Cocok untuk berkas lamaran & administrasi.', tag: 'PDF · JPG · PNG' },
   { slug: 'qr', emoji: '🔳', name: 'QR Generator', desc: 'Buat QR code untuk link, Wi-Fi, atau teks. Warna kustom, logo di tengah, ekspor PNG & SVG.', tag: 'PNG · SVG · Wi-Fi' },
 ];
 

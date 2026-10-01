@@ -22,7 +22,7 @@ export const projects = [
 
 export const subdomains = [
   { sub: '', name: 'Portfolio (you are here)', desc: 'Halaman utama: 3D, animasi, AI.', url: 'https://efrino.web.id' },
-  { sub: 'tools', name: 'Efrino Tools', desc: 'Background Remover AI, 3D Maker, Compressor, QR: gratis & tanpa upload.', url: 'https://tools.efrino.web.id' },
+  { sub: 'tools', name: 'Efrino Tools', desc: 'Background Remover AI, 3D Maker, PDF Merge, Compressor, QR: gratis & tanpa upload.', url: 'https://tools.efrino.web.id' },
   { sub: 'ai', name: 'AI Playground', desc: 'Chat AI layar penuh.', url: 'https://ai.efrino.web.id' },
   { sub: 'shop', name: 'Nayea Store', desc: 'E-commerce modest fashion, React + Supabase.', url: 'https://shop.efrino.web.id' },
   { sub: 'admin', name: 'Meca Admin', desc: 'Konsol admin platform training mekanik.', url: 'https://admin.efrino.web.id' },
