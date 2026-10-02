@@ -6,7 +6,7 @@ import { db, getSetting, setSetting } from './db.js';
 import { runAll, score, draft, addManual, addShared, completeItem, extractFromImages, digest, profile, importLeads } from './engine.js';
 import { waStart, waStatus, waLogout, waSend, waBoot } from './wa.js';
 import { ask, history, reset } from './assistant.js';
-import { fileInfo, filePath, confirmAction, cancelAction } from './tools.js';
+import { fileInfo, filePath, confirmAction, cancelAction, actionToDraft, gmailDraft } from './tools.js';
 
 const PASSWORD = process.env.RADAR_PASSWORD || '';
 // Long random token for the iOS Shortcut (sent as a Bearer header); stored once, shown in the dashboard.
@@ -73,8 +73,8 @@ const server = http.createServer(async (req, res) => {
       const fm = p.match(/^files\/([0-9a-f-]{36})$/);
       if (fm && req.method === 'GET') { const f = fileInfo(fm[1]); if (!f) return json(res, 404, { error: 'File tidak ada.' });
         res.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': `inline; filename="${f.name.replace(/"/g, '')}"` }); return fs.createReadStream(filePath(f.id)).pipe(res); }
-      const am = p.match(/^actions\/([0-9a-f-]{36})\/(confirm|cancel)$/);
-      if (am && req.method === 'POST') { try { if (am[2] === 'confirm') return json(res, 200, await confirmAction(am[1])); return json(res, 200, { ok: cancelAction(am[1]) }); } catch (e) { return json(res, 409, { error: e.message }); } }
+      const am = p.match(/^actions\/([0-9a-f-]{36})\/(confirm|cancel|draft)$/);
+      if (am && req.method === 'POST') { try { if (am[2] === 'confirm') return json(res, 200, await confirmAction(am[1])); if (am[2] === 'draft') return json(res, 200, await actionToDraft(am[1])); return json(res, 200, { ok: cancelAction(am[1]) }); } catch (e) { return json(res, 409, { error: e.message }); } }
       if (p === 'assistant' && req.method === 'DELETE') { reset(); return json(res, 200, { ok: true }); }
       if (p === 'wa' && req.method === 'GET') return json(res, 200, waStatus());
       if (p === 'wa/connect' && req.method === 'POST') { const b = await body(req); return json(res, 200, await waStart({ pairing: !!b.pairing })); }
@@ -82,13 +82,16 @@ const server = http.createServer(async (req, res) => {
       if (p === 'wa/test' && req.method === 'POST') { try { await waSend('✅ Tes dari Radar: laporan peluang harian akan dikirim ke nomor ini.'); return json(res, 200, { ok: true }); } catch (e) { return json(res, 409, { error: e.message }); } }
       if (p === 'run' && req.method === 'POST') { runAll().then(r => console.log('[run] manual', r)).catch(e => console.error(e)); return json(res, 202, { ok: true }); }
       if (p === 'manual' && req.method === 'POST') { const b = await body(req); if (String(b.text || '').trim().length < 40) return json(res, 400, { error: 'Tempel teks lowongan/proyek (min. 40 karakter).' }); return json(res, 201, parse(await addManual(String(b.text), String(b.url || '')))); }
-      const m = p.match(/^items\/(\d+)(?:\/(draft|status|rescore|complete))?$/);
+      const m = p.match(/^items\/(\d+)(?:\/(draft|status|rescore|complete|gmail))?$/);
       if (m) {
         const it = db.prepare('SELECT * FROM items WHERE id = ?').get(Number(m[1]));
         if (!it) return json(res, 404, { error: 'Tidak ditemukan.' });
         if (!m[2]) return json(res, 200, parse(it));
         if (m[2] === 'draft') { const b = await body(req); if (b.text !== undefined) { db.prepare('UPDATE items SET draft = ? WHERE id = ?').run(String(b.text).slice(0, 8000), it.id); return json(res, 200, { draft: b.text }); } return json(res, 200, { draft: await draft(it, b.lang) }); }
         if (m[2] === 'status') { const b = await body(req); if (!['new', 'shortlist', 'sent', 'archived'].includes(b.status)) return json(res, 400, { error: 'Status salah.' }); db.prepare('UPDATE items SET status = ? WHERE id = ?').run(b.status, it.id); return json(res, 200, { ok: true }); }
+        if (m[2] === 'gmail') { const b = await body(req); const text = String(b.text || it.draft || '').trim(); if (!text) return json(res, 400, { error: 'Belum ada draft.' });
+          const subject = String(b.subject || (it.track === 'business' ? `Proposal: ${it.title}` : `Application: ${it.title}`)).slice(0, 200);
+          try { const r = await gmailDraft({ to: b.to, subject, body: text }); return json(res, 200, r); } catch (e) { return json(res, 409, { error: e.message }); } }
         if (m[2] === 'complete') { const b = await body(req); try { return json(res, 200, parse(await completeItem(it.id, b.text))); } catch (e) { return json(res, 400, { error: e.message }); } }
         if (m[2] === 'rescore') { await score(it); return json(res, 200, parse(db.prepare('SELECT * FROM items WHERE id = ?').get(it.id))); }
       }

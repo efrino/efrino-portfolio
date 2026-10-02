@@ -1,6 +1,8 @@
 // Tools the assistant can call. Anything that reaches OTHER people (email) is staged and needs the owner's click.
 import PDFDocument from 'pdfkit';
 import nodemailer from 'nodemailer';
+import MailComposer from 'nodemailer/lib/mail-composer/index.js';
+import { ImapFlow } from 'imapflow';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { db } from './db.js';
@@ -21,6 +23,8 @@ export const TOOL_DEFS = [
     parameters: { type: 'object', properties: { title: { type: 'string' }, filename: { type: 'string', description: 'nama file tanpa .pdf' }, content: { type: 'string' } }, required: ['title', 'content'] } } },
   { type: 'function', function: { name: 'send_email', description: 'SIAPKAN email ke orang lain (tidak langsung terkirim: pemilik harus menekan tombol konfirmasi). Bisa melampirkan PDF dari generate_pdf.',
     parameters: { type: 'object', properties: { to: { type: 'string' }, subject: { type: 'string' }, body: { type: 'string' }, attachment_file_id: { type: 'string' } }, required: ['to', 'subject', 'body'] } } },
+  { type: 'function', function: { name: 'save_gmail_draft', description: 'Simpan email sebagai DRAF di Gmail pemilik (tidak terkirim; pemilik membuka & mengirim sendiri dari Gmail). Cocok untuk lamaran/proposal yang ingin dirapikan dulu. Bisa melampirkan PDF.',
+    parameters: { type: 'object', properties: { to: { type: 'string' }, subject: { type: 'string' }, body: { type: 'string' }, attachment_file_id: { type: 'string' } }, required: ['subject', 'body'] } } },
   { type: 'function', function: { name: 'notify_me', description: 'Kirim pesan/pengingat ke pemilik sendiri lewat WhatsApp dan/atau Telegram (langsung terkirim, hanya ke pemilik).',
     parameters: { type: 'object', properties: { text: { type: 'string' }, channel: { type: 'string', enum: ['whatsapp', 'telegram', 'both'] } }, required: ['text'] } } },
 ];
@@ -118,6 +122,12 @@ export async function runTool(name, args, ctx) {
       ctx.actions.push({ id, type: 'email', ...payload, attachment: payload.attachment_file_id ? fileInfo(payload.attachment_file_id)?.name : null });
       return { staged: true, action_id: id, note: mailConfigured() ? 'Menunggu pemilik menekan "Kirim email".' : 'SMTP belum diatur: email tersimpan sebagai draft; pemilik perlu mengisi SMTP_USER/SMTP_PASS.' };
     }
+    case 'save_gmail_draft': {
+      if (args.to && !EMAIL.test(String(args.to))) return { error: 'alamat email tidak valid' };
+      if (args.attachment_file_id && !fileInfo(args.attachment_file_id)) return { error: 'lampiran tidak ditemukan' };
+      const r = await gmailDraft({ to: args.to, subject: String(args.subject).slice(0, 200), body: String(args.body).slice(0, 10000), attachment_file_id: args.attachment_file_id });
+      ctx.drafts = (ctx.drafts || 0) + 1; return { ...r, note: 'Draf tersimpan di Gmail pemilik.' };
+    }
     case 'notify_me': {
       const ch = args.channel || 'both', sent = [];
       if (ch !== 'telegram') { try { const { waSend, waStatus } = await import('./wa.js'); if (waStatus().status === 'connected') { await waSend(String(args.text).slice(0, 3000)); sent.push('whatsapp'); } } catch {} }
@@ -129,6 +139,22 @@ export async function runTool(name, args, ctx) {
     }
     default: return { error: `tool ${name} tidak dikenal` };
   }
+}
+
+// --- Gmail draft via IMAP (same App Password as SMTP). A draft stays in the owner's mailbox; nothing is sent.
+export async function gmailDraft({ to = '', subject = '', body = '', attachment_file_id = null }) {
+  if (!mailConfigured()) throw new Error('Gmail belum terhubung (SMTP_USER & SMTP_PASS).');
+  const att = attachment_file_id && fileInfo(attachment_file_id);
+  const raw = await new MailComposer({ from: `"${process.env.MAIL_FROM_NAME || 'Efrino Wahyu Eko Pambudi'}" <${process.env.SMTP_USER}>`, to: to || undefined, subject, text: body,
+    attachments: att ? [{ filename: att.name, path: filePath(att.id) }] : [] }).compile().build();
+  const c = new ImapFlow({ host: process.env.IMAP_HOST || 'imap.gmail.com', port: 993, secure: true, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, logger: false });
+  await c.connect();
+  try {
+    // The Drafts folder name is localised ("[Gmail]/Draf", "[Gmail]/Drafts"): find it by its special-use flag.
+    const box = (await c.list()).find(b => b.specialUse === '\\Drafts')?.path || '[Gmail]/Drafts';
+    await c.append(box, raw, ['\\Draft', '\\Seen']);
+    return { ok: true, folder: box };
+  } finally { await c.logout().catch(() => {}); }
 }
 
 // Owner clicked "Kirim": the only path by which email leaves the server.
@@ -143,5 +169,13 @@ export async function confirmAction(id) {
     return { ok: true };
   }
   throw new Error('Jenis aksi tidak dikenal.');
+}
+export async function actionToDraft(id) {
+  const a = db.prepare('SELECT * FROM actions WHERE id = ?').get(String(id));
+  if (!a) throw new Error('Aksi tidak ditemukan.');
+  if (a.status !== 'pending') throw new Error(`Aksi sudah ${a.status}.`);
+  await gmailDraft(JSON.parse(a.payload));
+  db.prepare(`UPDATE actions SET status = 'drafted' WHERE id = ?`).run(a.id);
+  return { ok: true };
 }
 export const cancelAction = id => db.prepare(`UPDATE actions SET status = 'cancelled' WHERE id = ? AND status = 'pending'`).run(String(id)).changes > 0;

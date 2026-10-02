@@ -152,9 +152,10 @@ async function list() {
       b.disabled = true; b.textContent = 'Menulis…';
       try {
         const d = (await api(`items/${id}`)).draft || (await api(`items/${id}/draft`, { method: 'POST', body: {} })).draft;
-        el.querySelector('.draft').innerHTML = `<textarea rows="10">${esc(d)}</textarea><div class="actions" style="margin-top:6px"><button class="btn" data-x="copy">📋 Salin</button><button class="btn" data-x="save">Simpan edit</button><button class="btn" data-x="en">Tulis ulang (English)</button><button class="btn" data-x="id">Tulis ulang (Indonesia)</button></div>`;
+        el.querySelector('.draft').innerHTML = `<textarea rows="10">${esc(d)}</textarea><div class="actions" style="margin-top:6px"><button class="btn" data-x="copy">📋 Salin</button><button class="btn" data-x="save">Simpan edit</button><button class="btn" data-x="gmail">📥 Simpan ke Draf Gmail</button><button class="btn" data-x="en">Tulis ulang (English)</button><button class="btn" data-x="id">Tulis ulang (Indonesia)</button></div>`;
         const ta = el.querySelector('textarea');
         el.querySelector('[data-x=copy]').onclick = () => { navigator.clipboard.writeText(ta.value); toast('Disalin. Edit seperlunya lalu kirim sendiri.'); };
+        el.querySelector('[data-x=gmail]').onclick = async ev => { ev.target.disabled = true; try { await api(`items/${id}/gmail`, { method: 'POST', body: { text: ta.value } }); toast('Tersimpan di Draf Gmail. Buka Gmail, tambahkan penerima, lalu kirim.'); } catch (err) { toast(err.message); } ev.target.disabled = false; };
         el.querySelector('[data-x=save]').onclick = async () => { await api(`items/${id}/draft`, { method: 'POST', body: { text: ta.value } }); toast('Tersimpan'); };
         for (const l of ['en', 'id']) el.querySelector(`[data-x=${l}]`).onclick = async () => { ta.value = 'Menulis…'; ta.value = (await api(`items/${id}/draft`, { method: 'POST', body: { lang: l } })).draft; };
       } catch (e) { toast(e.message); }
@@ -182,12 +183,12 @@ const inl = h => h.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/`([^`\n]+
 function metaHtml(meta) {
   if (!meta) return '';
   const files = (meta.files || []).map(f => `<a class="btn" href="${esc(f.url)}" target="_blank" rel="noopener">📄 ${esc(f.name)}</a>`).join('');
-  const acts = (meta.actions || []).map(a => a.status && a.status !== 'pending' ? `<div class="act"><b>${a.status === 'done' ? '✅ Email terkirim' : '✖️ Email dibatalkan'}</b><div class="meta">Ke: ${esc(a.to)} · ${esc(a.subject)}</div></div>` : `<div class="act" data-act="${esc(a.id)}"><b>✉️ Email menunggu konfirmasi</b><div class="meta">Ke: ${esc(a.to)}<br>Subjek: ${esc(a.subject)}${a.attachment ? `<br>Lampiran: ${esc(a.attachment)}` : ''}</div>
-    <details><summary>Lihat isi</summary><pre>${esc(a.body)}</pre></details><div class="actions"><button class="btn primary" data-do="confirm">Kirim email</button><button class="btn" data-do="cancel">Batal</button></div></div>`).join('');
+  const acts = (meta.actions || []).map(a => a.status && a.status !== 'pending' ? `<div class="act"><b>${{ done: '✅ Email terkirim', drafted: '📥 Tersimpan di Draf Gmail' }[a.status] || '✖️ Email dibatalkan'}</b><div class="meta">Ke: ${esc(a.to)} · ${esc(a.subject)}</div></div>` : `<div class="act" data-act="${esc(a.id)}"><b>✉️ Email menunggu konfirmasi</b><div class="meta">Ke: ${esc(a.to)}<br>Subjek: ${esc(a.subject)}${a.attachment ? `<br>Lampiran: ${esc(a.attachment)}` : ''}</div>
+    <details><summary>Lihat isi</summary><pre>${esc(a.body)}</pre></details><div class="actions"><button class="btn primary" data-do="confirm">Kirim email</button><button class="btn" data-do="draft">📥 Simpan ke Draf Gmail</button><button class="btn" data-do="cancel">Batal</button></div></div>`).join('');
   const used = (meta.used || []).length ? `<div class="src">🛠️ ${meta.used.join(', ')}</div>` : '';
   return `${files ? `<div class="actions" style="margin-top:8px">${files}</div>` : ''}${acts}${used}`;
 }
-const PROMPTS = ['Buatkan PDF CV 1 halaman untuk peluang teratas', 'Ingatkan saya di WhatsApp untuk follow-up besok', '3 peluang mana yang harus saya kejar dulu minggu ini, dan kenapa?', 'Lamaran mana yang perlu di-follow-up? Tuliskan pesannya.', 'Bantu saya siapkan jawaban interview untuk peluang teratas.', 'Tulis posting LinkedIn tentang pengalaman PPIC Smart Planner (tanpa data rahasia).', 'Berapa harga yang pantas untuk proyek aplikasi inventory gudang 6 minggu?'];
+const PROMPTS = ['Buatkan cover letter untuk peluang teratas dan simpan ke draf Gmail saya', 'Buatkan PDF CV 1 halaman untuk peluang teratas', 'Ingatkan saya di WhatsApp untuk follow-up besok', '3 peluang mana yang harus saya kejar dulu minggu ini, dan kenapa?', 'Lamaran mana yang perlu di-follow-up? Tuliskan pesannya.', 'Bantu saya siapkan jawaban interview untuk peluang teratas.', 'Tulis posting LinkedIn tentang pengalaman PPIC Smart Planner (tanpa data rahasia).', 'Berapa harga yang pantas untuk proyek aplikasi inventory gudang 6 minggu?'];
 async function chat() {
   const hist = await api('assistant');
   $('#list').innerHTML = `<div class="card chatbox"><div id="log" class="log">${hist.length ? '' : `<div class="msg a">Halo Efrino 👋 Saya tahu profil Anda, peluang terbaik, shortlist, lamaran terkirim, dan leads jasa. Mau mulai dari mana?</div>`}</div>
@@ -202,7 +203,7 @@ async function chat() {
   log.addEventListener('click', async e => {
     const d = e.target.closest('[data-do]');
     if (d) { const box = d.closest('[data-act]'); d.disabled = true;
-      try { await api(`actions/${box.dataset.act}/${d.dataset.do}`, { method: 'POST' }); box.innerHTML = d.dataset.do === 'confirm' ? '<b>✅ Email terkirim</b>' : '<b>Dibatalkan</b>'; }
+      try { await api(`actions/${box.dataset.act}/${d.dataset.do}`, { method: 'POST' }); box.innerHTML = { confirm: '<b>✅ Email terkirim</b>', draft: '<b>📥 Tersimpan di Draf Gmail</b>', cancel: '<b>Dibatalkan</b>' }[d.dataset.do]; }
       catch (err) { toast(err.message); d.disabled = false; } return; }
     const a = e.target.closest('[data-item]'); if (!a) return; e.preventDefault(); const it = await api(`items/${a.dataset.item}`).catch(() => null); if (it?.url) window.open(it.url, '_blank', 'noopener'); else toast('Peluang tidak ditemukan'); });
   const send = async text => {
