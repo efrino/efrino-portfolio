@@ -67,6 +67,22 @@ export async function chatRaw(body) {
   throw err || new Error('AI belum dikonfigurasi');
 }
 
+// Read job-posting screenshots with a vision model (Gemini). Returns the posting as plain text.
+export async function extractFromImages(images) {
+  const g = PROVIDERS.find(p => p.url.includes('generativelanguage'));
+  if (!g) throw new Error('Butuh GEMINI_API_KEY untuk membaca gambar.');
+  const list = (Array.isArray(images) ? images : []).filter(u => /^data:image\/(png|jpe?g|webp|heic|heif);base64,/.test(u)).slice(0, 6);
+  if (!list.length) throw new Error('Tidak ada gambar yang valid.');
+  const r = await fetch(g.url, { method: 'POST', signal: AbortSignal.timeout(90000), headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${g.key}` },
+    body: JSON.stringify({ model: g.model, temperature: 0, max_tokens: 4000, messages: [{ role: 'user', content: [
+      { type: 'text', text: 'Ini screenshot (bisa beberapa, berurutan) sebuah lowongan kerja atau permintaan proyek. Salin isinya menjadi teks biasa yang rapi: baris pertama "Judul — Perusahaan", lalu lokasi/tipe kerja/gaji bila ada, lalu deskripsi, tanggung jawab, dan kualifikasi. Abaikan menu, tombol, iklan, dan elemen aplikasi. Jangan menambah atau mengarang apa pun; tulis dalam bahasa aslinya. Jika gambar bukan lowongan, balas: BUKAN_LOWONGAN' },
+      ...list.map(url => ({ type: 'image_url', image_url: { url } })) ] }] }) });
+  if (!r.ok) throw new Error(`Gagal membaca gambar (${r.status}).`);
+  const text = String((await r.json()).choices?.[0]?.message?.content || '').trim();
+  if (!text || text.includes('BUKAN_LOWONGAN')) throw new Error('Gambar tidak terbaca sebagai lowongan. Coba screenshot bagian deskripsinya.');
+  return text;
+}
+
 // Deterministic location check: small models routinely ignore "Remote (US)".
 const OPEN = /\b(worldwide|anywhere|global(ly)?|international|apac|asia|south ?east asia|sea|indonesia|jakarta|bekasi|gmt\+7|utc\+7|wib)\b/i;
 const RESTRICTED = /(remote\s*[(\[-]\s*(us|usa|u\.s\.?|united states|canada|us\s*\/\s*can(ada)?|north america|uk|eu|europe|emea|germany|latam)\b)|\b(us|usa|u\.s\.|canada|uk|eu|europe|germany)[ -]only\b|\bmust (be|reside|live)( based| located)? in (the )?(us|usa|united states|canada|uk|eu|europe|germany)\b|\bus citizens?\b|\bsecurity clearance\b|\bonsite\b(?![^|]{0,30}\bor remote\b(?!\s*\((us|can)))/i;
@@ -109,6 +125,12 @@ export function addItem(source, it, status = 'new') {
   return insert.run(source, it.ext_id, it.title, it.company || '', it.url || '', it.location || '', it.salary || '', it.tags || '', it.description || '', it.posted_at || null, status).changes;
 }
 
+// Never lose what the owner saved: if the AI is busy/out of quota, keep the item and score it on the next run.
+async function scoreOrDefer(it) {
+  try { await score(it); }
+  catch { db.prepare(`UPDATE items SET score = NULL, summary = ? WHERE id = ?`).run('Belum dinilai: AI sedang sibuk/kuota habis. Radar menilai otomatis di putaran berikutnya.', it.id); }
+}
+
 // Fetch every source, keep only pre-filtered items, then score a capped batch.
 export async function runAll({ scoreLimit = Number(process.env.SCORE_PER_RUN || 40) } = {}) {
   const p = profile();
@@ -121,7 +143,8 @@ export async function runAll({ scoreLimit = Number(process.env.SCORE_PER_RUN || 
     } catch (e) { db.prepare('INSERT INTO runs (source, error) VALUES (?,?)').run(name, e.message.slice(0, 300)); console.error('[src]', name, e.message); }
   }
   importLeads();
-  const todo = db.prepare(`SELECT * FROM items WHERE score IS NULL AND status = 'new' ORDER BY id DESC LIMIT ?`).all(scoreLimit);
+  // Owner-saved items first (shortlist), then new finds; shared links without a description wait for 'Lengkapi'.
+  const todo = db.prepare(`SELECT * FROM items WHERE score IS NULL AND status IN ('new', 'shortlist') AND length(description) >= 200 ORDER BY status = 'shortlist' DESC, id DESC LIMIT ?`).all(scoreLimit);
   let scored = 0;
   for (const it of todo) { try { await score(it); scored++; await sleep(2500); } catch { break; } }
   setSetting('lastRun', new Date().toISOString());
@@ -154,7 +177,7 @@ export async function addShared({ url = '', title = '', text = '' }) {
   const clean = body.replace(link, '').trim();
   addItem('shared', { ext_id: id, title: (clean.split('\n')[0] || `Lowongan dari ${host}`).slice(0, 160), company: '', url: link, location: '', tags: `shared, ${host}`, description: clean.slice(0, 5000), posted_at: new Date().toISOString() }, 'shortlist');
   const it = db.prepare('SELECT * FROM items WHERE source = ? AND ext_id = ?').get('shared', id);
-  if (clean.length >= 200) await score(it).catch(() => {});
+  if (clean.length >= 200) await scoreOrDefer(it);
   else db.prepare(`UPDATE items SET summary = ? WHERE id = ?`).run('Deskripsi belum lengkap: buka link, salin isi lowongan, lalu tekan "Lengkapi" agar AI bisa menilai.', it.id);
   return db.prepare('SELECT * FROM items WHERE id = ?').get(it.id);
 }
@@ -166,7 +189,7 @@ export async function completeItem(id, text) {
   if (t.length < 80) throw new Error('Tempel isi lowongan (min. 80 karakter).');
   const first = t.split('\n')[0].slice(0, 160);
   db.prepare('UPDATE items SET description = ?, title = CASE WHEN title LIKE \'Lowongan dari %\' THEN ? ELSE title END WHERE id = ?').run(t.slice(0, 5000), first, it.id);
-  await score(db.prepare('SELECT * FROM items WHERE id = ?').get(it.id));
+  await scoreOrDefer(db.prepare('SELECT * FROM items WHERE id = ?').get(it.id));
   return db.prepare('SELECT * FROM items WHERE id = ?').get(it.id);
 }
 
@@ -175,7 +198,7 @@ export async function addManual(text, url = '') {
   const id = `m-${Date.now()}`;
   addItem('manual', { ext_id: id, title: first, company: '', url, location: '', tags: 'manual', description: text.slice(0, 5000), posted_at: new Date().toISOString() }, 'shortlist');
   const it = db.prepare('SELECT * FROM items WHERE source = ? AND ext_id = ?').get('manual', id);
-  await score(it);
+  await scoreOrDefer(it);
   return db.prepare('SELECT * FROM items WHERE id = ?').get(it.id);
 }
 

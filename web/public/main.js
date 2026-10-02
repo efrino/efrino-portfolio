@@ -185,14 +185,15 @@ function scene3d() {
   document.querySelectorAll('main > section').forEach(s => sio.observe(s));
 
   const mouse = new THREE.Vector2(9, 9), target = new THREE.Vector2(), ZERO = new THREE.Vector2();
-  addEventListener('pointermove', e => { mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); });
+  // Relative to the canvas itself (innerWidth includes the scrollbar, the fixed canvas does not).
+  addEventListener('pointermove', e => { const r = canvas.getBoundingClientRect(); mouse.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); });
   document.addEventListener('pointerout', e => { if (!e.relatedTarget) mouse.set(9, 9); });
   addEventListener('blur', () => mouse.set(9, 9));
 
   const wide = () => innerWidth > 900;
   const resize = () => {
-    renderer.setSize(innerWidth, innerHeight, false);
-    camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+    renderer.setSize(canvas.clientWidth || innerWidth, canvas.clientHeight || innerHeight, false);
+    camera.aspect = (canvas.clientWidth || innerWidth) / (canvas.clientHeight || innerHeight); camera.updateProjectionMatrix();
     camera.position.z = wide() ? 10 : 13;
   };
   addEventListener('resize', resize); resize();

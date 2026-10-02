@@ -36,10 +36,11 @@ async function main() {
   if (shared) { history.replaceState({}, '', '/'); api('share', { method: 'POST', body: JSON.parse(shared) }).then(it => { tab = 2; toast(it.score != null ? `Tersimpan, skor ${it.score}` : 'Tersimpan di Shortlist: tekan Lengkapi untuk dinilai'); main(); }).catch(e => toast(e.message)); }
   $('#run').onclick = async e => { e.target.disabled = true; await api('run', { method: 'POST' }); toast('Mencari di latar belakang… muat ulang beberapa menit lagi'); };
   $('#paste').onclick = () => { $('#panel').innerHTML = `<form class="card" id="mf"><b>Tempel lowongan atau permintaan proyek</b><p style="color:var(--muted);font-size:14px">Dari LinkedIn, Glints, JobStreet, Projects.co.id, grup WhatsApp/Facebook, dsb. Radar menilai & menyiapkan draft.</p>
-      <input class="in" name="url" placeholder="Link (opsional)"><textarea name="text" rows="8" placeholder="Tempel seluruh isi lowongan di sini…"></textarea><div class="actions"><button class="btn primary">Nilai & simpan</button><button type="button" class="btn" id="cx">Batal</button></div></form>`;
+      <input class="in" name="url" placeholder="Link (opsional)"><textarea name="text" rows="8" placeholder="Tempel isi lowongan di sini, atau pakai tombol 📷 Dari screenshot di bawah…"></textarea><div class="actions"><button class="btn primary">Nilai & simpan</button><button type="button" class="btn" id="cx">Batal</button></div></form>`;
+    imageTools($('#mf textarea'));
     $('#cx').onclick = () => $('#panel').innerHTML = '';
     $('#mf').onsubmit = async e => { e.preventDefault(); const b = e.target.querySelector('.primary'); b.disabled = true; b.textContent = 'Menilai…';
-      try { const it = await api('manual', { method: 'POST', body: { text: e.target.text.value, url: e.target.url.value } }); $('#panel').innerHTML = ''; tab = 2; main(); toast(`Skor ${it.score}: disimpan ke Shortlist`); } catch (err) { toast(err.message); b.disabled = false; b.textContent = 'Nilai & simpan'; } }; };
+      try { const it = await api('manual', { method: 'POST', body: { text: e.target.text.value, url: e.target.url.value } }); $('#panel').innerHTML = ''; tab = 2; main(); toast(it.score != null ? `Skor ${it.score}: disimpan ke Shortlist` : 'Disimpan ke Shortlist. AI sedang sibuk; dinilai otomatis nanti.'); } catch (err) { toast(err.message); b.disabled = false; b.textContent = 'Nilai & simpan'; } }; };
   $('#prof').onclick = async () => { const p = await api('profile'); $('#panel').innerHTML = `<form class="card" id="pf"><b>Profil & preferensi</b>
       <label>Tentang saya (dipakai AI untuk menilai & menulis draft)<textarea name="about" rows="8">${esc(p.about)}</textarea></label>
       <label>Yang dicari<textarea name="wants" rows="2">${esc(p.wants)}</textarea></label>
@@ -71,6 +72,27 @@ async function phonePanel() {
   $('#cpUrl').onclick = () => { navigator.clipboard.writeText(endpoint); toast('Alamat disalin'); };
   $('#newTok').onclick = async () => { if (!confirm('Buat token baru? Pintasan lama berhenti bekerja.')) return; await api('share-token', { method: 'POST' }); phonePanel(); toast('Token baru dibuat: perbarui di Pintasan'); };
   $('#cx2').onclick = () => $('#panel').innerHTML = '';
+}
+
+// Screenshot -> text. Images are downscaled on the phone first (fast upload, fewer tokens).
+async function shrink(file) {
+  const bmp = await createImageBitmap(file); const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.85);
+}
+function imageTools(ta) {
+  const wrap = document.createElement('div'); wrap.className = 'actions'; wrap.style.marginTop = '6px';
+  wrap.innerHTML = `<label class="btn">📷 Dari screenshot<input type="file" accept="image/*" multiple hidden></label><span class="src" style="align-self:center">Boleh beberapa gambar (urut atas → bawah). Bisa juga tempel gambar langsung (Ctrl/⌘+V).</span>`;
+  const run = async files => {
+    const imgs = [...files].filter(f => f.type.startsWith('image/')).slice(0, 6); if (!imgs.length) return;
+    const old = ta.value; ta.value = `Membaca ${imgs.length} gambar…`; ta.disabled = true;
+    try { const { text } = await api('extract', { method: 'POST', body: { images: await Promise.all(imgs.map(shrink)) } }); ta.value = (old && !old.startsWith('Membaca') ? old + '\n\n' : '') + text; toast('Teks dari gambar siap. Periksa dulu, lalu simpan.'); }
+    catch (e) { ta.value = old; toast(e.message); }
+    ta.disabled = false; ta.focus();
+  };
+  wrap.querySelector('input').onchange = e => run(e.target.files);
+  ta.addEventListener('paste', e => { const f = [...e.clipboardData.items].filter(i => i.type.startsWith('image/')).map(i => i.getAsFile()); if (f.length) { e.preventDefault(); run(f); } });
+  ta.after(wrap);
 }
 
 let waTimer;
@@ -120,9 +142,10 @@ async function list() {
     const id = el.dataset.id, a = b.dataset.a;
     if (a === 'complete') {
       const box = el.querySelector('.draft');
-      box.innerHTML = `<textarea rows="8" placeholder="Buka link lowongan, salin seluruh isinya, tempel di sini…"></textarea><div class="actions" style="margin-top:6px"><button class="btn primary" data-x="go">Nilai sekarang</button></div>`;
+      box.innerHTML = `<textarea rows="8" placeholder="Tempel isi lowongan, atau ambil dari screenshot (tombol di bawah)…"></textarea><div class="actions" style="margin-top:6px"><button class="btn primary" data-x="go">Nilai sekarang</button></div>`;
+      imageTools(box.querySelector('textarea'));
       box.querySelector('[data-x=go]').onclick = async e => { e.target.disabled = true; e.target.textContent = 'Menilai…';
-        try { const r = await api(`items/${id}/complete`, { method: 'POST', body: { text: box.querySelector('textarea').value } }); toast(`Skor ${r.score}`); list(); } catch (err) { toast(err.message); e.target.disabled = false; e.target.textContent = 'Nilai sekarang'; } };
+        try { const r = await api(`items/${id}/complete`, { method: 'POST', body: { text: box.querySelector('textarea').value } }); toast(r.score != null ? `Skor ${r.score}` : 'Tersimpan. AI sedang sibuk; dinilai otomatis nanti.'); list(); } catch (err) { toast(err.message); e.target.disabled = false; e.target.textContent = 'Nilai sekarang'; } };
       return;
     }
     if (a === 'draft') {

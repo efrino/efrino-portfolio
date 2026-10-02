@@ -223,11 +223,15 @@ function serveStatic(req, res, file, roots = [PUBLIC]) {
     fs.stat(p, (err, st) => {
       if (err || !st.isFile()) return tryRoot(i + 1);
       const ext = path.extname(p);
+      const ims = Date.parse(req.headers['if-modified-since'] || '');
+      if (ims && Math.floor(st.mtimeMs / 1000) * 1000 <= ims) { res.writeHead(304); return res.end(); }
       const gzip = st.size > 1024 && /\.(html|js|css|json|svg|xml|txt|webmanifest)$/.test(p) && /\bgzip\b/.test(req.headers['accept-encoding'] || '');
       res.writeHead(200, {
         'Content-Type': MIME[ext] || 'application/octet-stream',
         // Vendored libraries are versioned, so they can be cached hard.
-        'Cache-Control': ext === '.html' ? 'no-cache' : file.startsWith('/vendor/') ? 'public, max-age=604800, immutable' : 'public, max-age=3600',
+        // App code revalidates every load so fixes show up at once; vendored libs are immutable.
+        'Cache-Control': file.startsWith('/vendor/') ? 'public, max-age=604800, immutable' : /\.(html|js|css|json|webmanifest)$/.test(ext) ? 'no-cache' : 'public, max-age=86400',
+        'Last-Modified': st.mtime.toUTCString(),
         Vary: 'Accept-Encoding',
         ...(gzip ? { 'Content-Encoding': 'gzip' } : { 'Content-Length': st.size }),
       });

@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, getSetting, setSetting } from './db.js';
-import { runAll, score, draft, addManual, addShared, completeItem, digest, profile, importLeads } from './engine.js';
+import { runAll, score, draft, addManual, addShared, completeItem, extractFromImages, digest, profile, importLeads } from './engine.js';
 import { waStart, waStatus, waLogout, waSend, waBoot } from './wa.js';
 import { ask, history, reset } from './assistant.js';
 import { fileInfo, filePath, confirmAction, cancelAction } from './tools.js';
@@ -18,7 +18,7 @@ const sign = v => `${v}.${crypto.createHmac('sha256', SECRET).update(v).digest('
 const verify = c => { if (!c) return false; const [v, s] = c.split('.'); const ok = sign(v); return ok.length === c.length && crypto.timingSafeEqual(Buffer.from(ok), Buffer.from(c)) && Number(v) > Date.now(); };
 const cookieOf = req => (req.headers.cookie || '').match(/(?:^|; )radar=([^;]+)/)?.[1];
 const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); };
-const body = async req => { let s = ''; for await (const c of req) { s += c; if (s.length > 100000) throw new Error('too large'); } return s ? JSON.parse(s) : {}; };
+const body = async (req, max = 100000) => { let s = ''; for await (const c of req) { s += c; if (s.length > max) throw new Error('Data terlalu besar.'); } return s ? JSON.parse(s) : {}; };
 const fails = new Map();
 const parse = it => it && ({ ...it, why: JSON.parse(it.why || '[]'), concerns: JSON.parse(it.concerns || '[]') });
 
@@ -63,6 +63,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (p === 'profile' && req.method === 'GET') return json(res, 200, profile());
       if (p === 'share' && req.method === 'POST') { try { return json(res, 201, parse(await addShared(await body(req)))); } catch (e) { return json(res, 400, { error: e.message }); } }
+      if (p === 'extract' && req.method === 'POST') { try { const b = await body(req, 16e6); return json(res, 200, { text: await extractFromImages(b.images) }); } catch (e) { return json(res, 400, { error: e.message }); } }
       if (p === 'share-token' && req.method === 'GET') return json(res, 200, { token: shareToken(), endpoint: `https://${req.headers.host}/api/share` });
       if (p === 'share-token' && req.method === 'POST') { setSetting('shareToken', null); db.prepare("DELETE FROM settings WHERE key = 'shareToken'").run(); return json(res, 200, { token: shareToken() }); }
       if (p === 'profile' && req.method === 'PUT') { const b = await body(req); setSetting('profile', { about: String(b.about || '').slice(0, 8000), include: String(b.include || ''), exclude: String(b.exclude || ''), wants: String(b.wants || '').slice(0, 1000), minScore: Math.max(0, Math.min(100, Number(b.minScore) || 60)) }); return json(res, 200, { ok: true }); }
@@ -107,7 +108,7 @@ server.listen(Number(process.env.PORT) || 3000, () => console.log('radar listeni
 waBoot();
 // Poll politely: every 6 hours, first run shortly after boot. Telegram digest at ~07:00 WIB.
 const HOURS = Number(process.env.RUN_EVERY_HOURS || 6);
-setTimeout(() => runAll().then(r => console.log('[run]', r)).catch(e => console.error(e)), 20000);
+if (process.env.RUN_ON_BOOT !== '0') setTimeout(() => runAll().then(r => console.log('[run]', r)).catch(e => console.error(e)), 20000);
 setInterval(() => runAll().then(r => console.log('[run]', r)).catch(e => console.error(e)), HOURS * 3600e3);
 setInterval(() => { const h = new Date(Date.now() + 7 * 3600e3); if (h.getUTCHours() === 7 && h.getUTCMinutes() < 10 && getSetting('digestDay') !== h.toISOString().slice(0, 10)) { setSetting('digestDay', h.toISOString().slice(0, 10)); digest().catch(console.error); } }, 5 * 60e3);
 setInterval(() => importLeads(), 10 * 60e3);
