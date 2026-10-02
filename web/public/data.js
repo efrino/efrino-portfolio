@@ -5,6 +5,7 @@ export const typedRoles = [
 
 const gh = n => `https://github.com/efrino/${n}`;
 export const projects = [
+  { icon: '💬', title: 'Balasin: WhatsApp AI SaaS', cat: 'AI', live: 'https://balasin.efrino.web.id', desc: 'Asisten WhatsApp multi-tenant untuk UMKM: LLM yang di-grounding ke katalog & FAQ toko, pesanan dengan harga dihitung ulang di server dan konfirmasi eksplisit pelanggan, handoff ke manusia, jam operasional, dan sesi WhatsApp tersimpan di PostgreSQL.', tags: ['Node.js', 'PostgreSQL', 'LLM', 'WhatsApp', 'Multi-tenant'] },
   { icon: '✅', title: 'Opnamo: Stock-Taking SaaS', cat: 'Industrial', live: 'https://opnamo.efrino.web.id', desc: 'Produk SaaS multi-tenant untuk stok opname UMKM: tag QR, scan kamera HP sebagai PWA offline-first dengan sinkronisasi idempoten, laporan selisih dalam rupiah, impor/ekspor Excel, dan cetak label A4/thermal 58mm.', tags: ['Node.js', 'PostgreSQL', 'PWA', 'IndexedDB', 'Multi-tenant'] },
   { icon: '🧰', title: 'Efrino Tools', cat: 'Web', live: 'https://tools.efrino.web.id', desc: 'Kumpulan tools publik yang berjalan 100% di browser: Background Remover AI (ONNX via WebGPU/WASM), 3D Maker teks/logo → GLB/STL, batch Image Compressor, dan QR Generator. Nol upload, nol biaya server.', tags: ['WebGPU', 'WASM', 'Three.js', 'Canvas'] },
   { icon: '🏭', title: 'PPIC Smart Planner', cat: 'Industrial', private: true, desc: 'Flagship internal: menggantikan kalkulasi PPIC manual Excel. Pipeline 16 langkah dengan progress SSE live menghasilkan jadwal produksi welding harian, stock rolling, analisis achievement & alert delivery-miss.', tags: ['CodeIgniter 3', 'Vue 3', 'MySQL', 'SSE'] },
@@ -23,6 +24,7 @@ export const projects = [
 
 export const subdomains = [
   { sub: '', name: 'Portfolio (you are here)', desc: 'Halaman utama: 3D, animasi, AI.', url: 'https://efrino.web.id' },
+  { sub: 'balasin', name: 'Balasin', desc: 'SaaS admin WhatsApp AI untuk UMKM: jawab dari katalog, catat pesanan.', url: 'https://balasin.efrino.web.id' },
   { sub: 'opnamo', name: 'Opnamo', desc: 'SaaS stok opname: tag QR, scan HP offline, laporan selisih rupiah.', url: 'https://opnamo.efrino.web.id' },
   { sub: 'jasa', name: 'Jasa Excel → Web', desc: 'Digitalisasi proses Excel jadi aplikasi web. Coba demo dengan file Anda.', url: 'https://jasa.efrino.web.id' },
   { sub: 'tools', name: 'Efrino Tools', desc: 'Background Remover AI, 3D Maker, PDF Merge, Compressor, QR: gratis & tanpa upload.', url: 'https://tools.efrino.web.id' },
