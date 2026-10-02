@@ -1,6 +1,8 @@
 # Built from the repo root so the portfolio profile can seed the Radar profile.
 FROM node:22-alpine
 WORKDIR /app
+COPY radar/package.json ./
+RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY radar/ ./
 COPY web/profile.txt ./profile.txt
 RUN mkdir -p /data && chown node:node /data

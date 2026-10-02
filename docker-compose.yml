@@ -28,6 +28,8 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - LEADS_FILE=/leads/leads.jsonl
+      - REPORT_WA_FROM=${REPORT_WA_FROM}
+      - REPORT_WA_TO=${REPORT_WA_TO}
     volumes:
       - radar-data:/data
       - portfolio-data:/leads:ro

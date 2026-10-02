@@ -129,15 +129,22 @@ export async function addManual(text, url = '') {
   return db.prepare('SELECT * FROM items WHERE id = ?').get(it.id);
 }
 
-// Optional daily Telegram digest (set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID).
+// Daily digest to Telegram (official API) and/or WhatsApp (Baileys sender). Returns channels that succeeded.
 export async function digest({ force = false } = {}) {
+  const p = profile();
+  const top = db.prepare(`SELECT * FROM items WHERE status = 'new' AND score >= ? AND (? OR fetched_at > datetime('now', '-1 day')) ORDER BY score DESC LIMIT 8`).all(p.minScore, force ? 1 : 0);
+  if (!top.length) return [];
+  const body = top.map(i => `${i.score} · ${i.track === 'business' ? '💼' : '🧑‍💻'} ${i.title} (${i.company})\n${i.url}`).join('\n\n');
+  const text = `🎯 Radar: ${top.length} peluang ${force ? 'teratas' : 'baru'}\n\n${body}\n\nBuka: https://radar.efrino.web.id`;
+  const sent = [];
+  if (await telegram(text)) sent.push('telegram');
+  try { const { waSend, waStatus } = await import('./wa.js'); if (waStatus().status === 'connected') { await waSend(text); sent.push('whatsapp'); } } catch (e) { console.error('[wa] digest', e.message); }
+  return sent;
+}
+
+async function telegram(text) {
   const { TELEGRAM_BOT_TOKEN: tok, TELEGRAM_CHAT_ID: chat } = process.env;
   if (!tok || !chat) return false;
-  const p = profile();
-  // Daily: only new finds of the last 24 h. Manual test: the best open ones regardless of age.
-  const top = db.prepare(`SELECT * FROM items WHERE status = 'new' AND score >= ? AND (? OR fetched_at > datetime('now', '-1 day')) ORDER BY score DESC LIMIT 8`).all(p.minScore, force ? 1 : 0);
-  if (!top.length) return false;
-  const text = `🎯 Radar: ${top.length} peluang baru\n\n` + top.map(i => `${i.score} · ${i.track === 'business' ? '💼' : '🧑‍💻'} ${i.title} (${i.company})\n${i.url}`).join('\n\n') + '\n\nhttps://radar.efrino.web.id';
   const r = await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: chat, text, disable_web_page_preview: true }) });
   if (!r.ok) { console.error('[telegram]', r.status, (await r.text()).slice(0, 200)); return false; }
   return true;
