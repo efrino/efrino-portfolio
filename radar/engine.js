@@ -46,6 +46,25 @@ export async function llm(messages, json = true, { small = false } = {}) {
   throw err || new Error('AI belum dikonfigurasi');
 }
 
+// Raw chat completion (supports tool calling). Returns the assistant message object.
+export async function chatRaw(body) {
+  if (globalThis.__radarFakeChat) return globalThis.__radarFakeChat(body);
+  let err;
+  // Big model first; on Groq rate limits fall back to the small model (separate quota) instead of failing.
+  const chain = PROVIDERS.flatMap(p => p.url.includes('groq') ? [p, { ...p, model: process.env.RADAR_SCORE_MODEL || 'openai/gpt-oss-20b' }] : [p]);
+  for (const p of chain) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await fetch(p.url, { method: 'POST', signal: AbortSignal.timeout(90000), headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
+          body: JSON.stringify({ model: p.model, temperature: 0.3, max_tokens: 2000, ...p.extra, ...body }) });
+        if (!r.ok) throw new Error(`${r.status} ${(await r.text()).slice(0, 160)}`);
+        return (await r.json()).choices[0].message;
+      } catch (e) { err = e; console.error('[chat]', p.model, e.message.slice(0, 120)); if (/^429/.test(e.message) && attempt === 0 && p === chain.at(-1)) { await sleep(15000); continue; } break; }
+    }
+  }
+  throw err || new Error('AI belum dikonfigurasi');
+}
+
 // Deterministic location check: small models routinely ignore "Remote (US)".
 const OPEN = /\b(worldwide|anywhere|global(ly)?|international|apac|asia|south ?east asia|sea|indonesia|jakarta|bekasi|gmt\+7|utc\+7|wib)\b/i;
 const RESTRICTED = /(remote\s*[(\[-]\s*(us|usa|u\.s\.?|united states|canada|us\s*\/\s*can(ada)?|north america|uk|eu|europe|emea|germany|latam)\b)|\b(us|usa|u\.s\.|canada|uk|eu|europe|germany)[ -]only\b|\bmust (be|reside|live)( based| located)? in (the )?(us|usa|united states|canada|uk|eu|europe|germany)\b|\bus citizens?\b|\bsecurity clearance\b|\bonsite\b(?![^|]{0,30}\bor remote\b(?!\s*\((us|can)))/i;

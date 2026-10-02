@@ -9,7 +9,7 @@ const api = async (p, opt = {}) => {
   return j;
 };
 const SRC = { remotive: 'Remotive', remoteok: 'Remote OK', weworkremotely: 'We Work Remotely', himalayas: 'Himalayas', arbeitnow: 'Arbeitnow', hn: 'Hacker News', manual: 'Manual', jasa: 'Lead jasa' };
-const TABS = [['career', 'new', '🧑‍💻 Karier'], ['business', 'new', '💼 Bisnis'], ['all', 'shortlist', '⭐ Shortlist'], ['all', 'sent', '📨 Terkirim']];
+const TABS = [['career', 'new', '🧑‍💻 Karier'], ['business', 'new', '💼 Bisnis'], ['all', 'shortlist', '⭐ Shortlist'], ['all', 'sent', '📨 Terkirim'], ['assistant', '', '🤖 Asisten']];
 let tab = 0;
 
 function login() {
@@ -27,7 +27,7 @@ async function main() {
     <div id="panel"></div>
     <div class="tabs">${TABS.map((t, i) => `<button data-i="${i}" class="${i === tab ? 'active' : ''}">${t[2]}</button>`).join('')}</div>
     <div class="list" id="list"></div>
-    <p class="src" style="margin-top:18px">Sumber: ${Object.values(SRC).slice(0, 6).join(', ')} (API/RSS publik) · lowongan dari situs lain cukup ditempel. Radar tidak pernah mengirim apa pun atas nama Anda.</p></div>`;
+    <p class="src" style="margin-top:18px">Sumber: ${Object.values(SRC).slice(0, 6).join(', ')} (API/RSS publik) · lowongan dari situs lain cukup ditempel. Email ke orang lain hanya terkirim setelah Anda menekan “Kirim email”.</p></div>`;
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { tab = +b.dataset.i; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b)); list(); });
   $('#tg').onclick = async () => { try { const r = await api('digest', { method: 'POST' }); toast('Ringkasan terkirim ke ' + r.sent.join(' & ')); } catch (e) { toast(e.message); } };
   $('#wa').onclick = waPanel;
@@ -77,6 +77,7 @@ async function waPanel() {
 }
 
 async function list() {
+  if (TABS[tab][0] === 'assistant') return chat();
   const [track, status] = TABS[tab];
   const rows = await api(`items?track=${track}&status=${status}`);
   $('#list').innerHTML = rows.length ? rows.map(it => `<div class="item" data-id="${it.id}">
@@ -109,3 +110,56 @@ async function list() {
   }));
 }
 api('stats').then(main).catch(() => {});
+
+// --- AI assistant
+// Light markdown: tables, code, bold, headings, bullets, #id links.
+const md = t => {
+  const tables = [];
+  t = String(t).replace(/(^\|.+\|\s*$\n?)+/gm, blk => {
+    const rows = blk.trim().split('\n').filter(r => !/^\|\s*:?-{2,}/.test(r)).map(r => r.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+    tables.push(`<div class="tbl"><table>${rows.map((r, i) => `<tr>${r.map(c => `<${i ? 'td' : 'th'}>${inl(esc(c).replace(/&lt;br\s*\/?&gt;/g, '<br>'))}</${i ? 'td' : 'th'}>`).join('')}</tr>`).join('')}</table></div>`);
+    return `\u0000${tables.length - 1}\u0000\n`;
+  });
+  return inl(esc(t).replace(/```([\s\S]*?)```/g, (_, c) => `<pre>${c.trim()}</pre>`).replace(/^#{1,4} (.+)$/gm, '<b>$1</b>').replace(/^\s*[-*] (.+)$/gm, '• $1'))
+    .replace(/\n/g, '<br>').replace(/\u0000(\d+)\u0000(<br>)?/g, (_, i) => tables[i]);
+};
+const inl = h => h.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/(^|\s|>)#(\d+)\b/g, '$1<a href="#" data-item="$2">#$2</a>');
+function metaHtml(meta) {
+  if (!meta) return '';
+  const files = (meta.files || []).map(f => `<a class="btn" href="${esc(f.url)}" target="_blank" rel="noopener">📄 ${esc(f.name)}</a>`).join('');
+  const acts = (meta.actions || []).map(a => a.status && a.status !== 'pending' ? `<div class="act"><b>${a.status === 'done' ? '✅ Email terkirim' : '✖️ Email dibatalkan'}</b><div class="meta">Ke: ${esc(a.to)} · ${esc(a.subject)}</div></div>` : `<div class="act" data-act="${esc(a.id)}"><b>✉️ Email menunggu konfirmasi</b><div class="meta">Ke: ${esc(a.to)}<br>Subjek: ${esc(a.subject)}${a.attachment ? `<br>Lampiran: ${esc(a.attachment)}` : ''}</div>
+    <details><summary>Lihat isi</summary><pre>${esc(a.body)}</pre></details><div class="actions"><button class="btn primary" data-do="confirm">Kirim email</button><button class="btn" data-do="cancel">Batal</button></div></div>`).join('');
+  const used = (meta.used || []).length ? `<div class="src">🛠️ ${meta.used.join(', ')}</div>` : '';
+  return `${files ? `<div class="actions" style="margin-top:8px">${files}</div>` : ''}${acts}${used}`;
+}
+const PROMPTS = ['Buatkan PDF CV 1 halaman untuk peluang teratas', 'Ingatkan saya di WhatsApp untuk follow-up besok', '3 peluang mana yang harus saya kejar dulu minggu ini, dan kenapa?', 'Lamaran mana yang perlu di-follow-up? Tuliskan pesannya.', 'Bantu saya siapkan jawaban interview untuk peluang teratas.', 'Tulis posting LinkedIn tentang pengalaman PPIC Smart Planner (tanpa data rahasia).', 'Berapa harga yang pantas untuk proyek aplikasi inventory gudang 6 minggu?'];
+async function chat() {
+  const hist = await api('assistant');
+  $('#list').innerHTML = `<div class="card chatbox"><div id="log" class="log">${hist.length ? '' : `<div class="msg a">Halo Efrino 👋 Saya tahu profil Anda, peluang terbaik, shortlist, lamaran terkirim, dan leads jasa. Mau mulai dari mana?</div>`}</div>
+    <div class="chips" id="qp">${PROMPTS.map(q => `<button type="button" class="qp">${esc(q)}</button>`).join('')}</div>
+    <form id="cf" class="cform"><textarea id="ct" rows="2" placeholder="Tanya apa saja… (Enter kirim, Shift+Enter baris baru). Sebut #id untuk peluang tertentu."></textarea><button class="btn primary">Kirim</button></form>
+    <div class="actions"><button class="btn" id="creset" type="button">Mulai percakapan baru</button></div></div>`;
+  const log = $('#log');
+  const add = (role, text, meta) => { const d = document.createElement('div'); d.className = `msg ${role === 'user' ? 'u' : 'a'}`; d.innerHTML = role === 'user' ? esc(text).replace(/\n/g, '<br>') : md(text) + metaHtml(meta);
+    if (role !== 'user') { const c = document.createElement('button'); c.className = 'copy'; c.textContent = 'Salin'; c.onclick = () => { navigator.clipboard.writeText(text); toast('Disalin'); }; d.append(c); }
+    log.append(d); log.scrollTop = log.scrollHeight; return d; };
+  hist.forEach(m => add(m.role, m.content, m.meta));
+  log.addEventListener('click', async e => {
+    const d = e.target.closest('[data-do]');
+    if (d) { const box = d.closest('[data-act]'); d.disabled = true;
+      try { await api(`actions/${box.dataset.act}/${d.dataset.do}`, { method: 'POST' }); box.innerHTML = d.dataset.do === 'confirm' ? '<b>✅ Email terkirim</b>' : '<b>Dibatalkan</b>'; }
+      catch (err) { toast(err.message); d.disabled = false; } return; }
+    const a = e.target.closest('[data-item]'); if (!a) return; e.preventDefault(); const it = await api(`items/${a.dataset.item}`).catch(() => null); if (it?.url) window.open(it.url, '_blank', 'noopener'); else toast('Peluang tidak ditemukan'); });
+  const send = async text => {
+    if (!text.trim()) return;
+    add('user', text); $('#ct').value = '';
+    const w = add('assistant', '…'); w.classList.add('typing');
+    try { const r = await api('assistant', { method: 'POST', body: { message: text } }); w.remove(); add('assistant', r.reply, r.meta); }
+    catch (e) { w.remove(); toast(e.message); }
+  };
+  $('#cf').onsubmit = e => { e.preventDefault(); send($('#ct').value); };
+  $('#ct').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send($('#ct').value); } };
+  document.querySelectorAll('.qp').forEach(b => b.onclick = () => send(b.textContent));
+  $('#creset').onclick = async () => { await api('assistant', { method: 'DELETE' }); chat(); };
+  $('#ct').focus();
+}

@@ -30,6 +30,12 @@ services:
       - LEADS_FILE=/leads/leads.jsonl
       - REPORT_WA_FROM=${REPORT_WA_FROM}
       - REPORT_WA_TO=${REPORT_WA_TO}
+      # Email (Gmail: smtp.gmail.com + an App Password). Optional.
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME:-Efrino Wahyu Eko Pambudi}
     volumes:
       - radar-data:/data
       - portfolio-data:/leads:ro
