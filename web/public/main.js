@@ -136,10 +136,15 @@ function scene3d() {
         // Cursor repulsion in SCREEN space: exact under the pointer whatever the shape's depth or tilt.
         vec4 clip = projectionMatrix * mv;
         vec2 dd = (clip.xy / clip.w - uMouse) * vec2(uAspect, 1.);
-        float f = smoothstep(.13, 0., length(dd));
-        // Move in view space by an amount that looks the same on screen at any depth.
-        mv.xy += normalize(dd + .0001) * f * .055 * -mv.z;
-        vGlow = f;
+        float r = length(dd);
+        // Close in: pushed away (a clear hole). Further out: pulled in (arms bend toward the cursor),
+        // so the scene reacts even when the pointer sits between the spiral arms.
+        float f = smoothstep(.11, 0., r);
+        float g = smoothstep(.42, .11, r) * (1. - f);
+        vec2 dir = normalize(dd + .0001);
+        // View-space offsets scaled by depth look the same on screen at any distance.
+        mv.xy += dir * (f * .05 - g * .03) * -mv.z;
+        vGlow = max(f, g * .7);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = uSize * (.35 + aSeed * .65) / -mv.z;
         vSeed = aSeed;
