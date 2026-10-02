@@ -5,6 +5,7 @@ export const typedRoles = [
 
 const gh = n => `https://github.com/efrino/${n}`;
 export const projects = [
+  { icon: '✅', title: 'Opnamo: Stock-Taking SaaS', cat: 'Industrial', live: 'https://opnamo.efrino.web.id', desc: 'Produk SaaS multi-tenant untuk stok opname UMKM: tag QR, scan kamera HP sebagai PWA offline-first dengan sinkronisasi idempoten, laporan selisih dalam rupiah, impor/ekspor Excel, dan cetak label A4/thermal 58mm.', tags: ['Node.js', 'PostgreSQL', 'PWA', 'IndexedDB', 'Multi-tenant'] },
   { icon: '🧰', title: 'Efrino Tools', cat: 'Web', live: 'https://tools.efrino.web.id', desc: 'Kumpulan tools publik yang berjalan 100% di browser: Background Remover AI (ONNX via WebGPU/WASM), 3D Maker teks/logo → GLB/STL, batch Image Compressor, dan QR Generator. Nol upload, nol biaya server.', tags: ['WebGPU', 'WASM', 'Three.js', 'Canvas'] },
   { icon: '🏭', title: 'PPIC Smart Planner', cat: 'Industrial', private: true, desc: 'Flagship internal: menggantikan kalkulasi PPIC manual Excel. Pipeline 16 langkah dengan progress SSE live menghasilkan jadwal produksi welding harian, stock rolling, analisis achievement & alert delivery-miss.', tags: ['CodeIgniter 3', 'Vue 3', 'MySQL', 'SSE'] },
   { icon: '🏷️', title: 'STO Prep: Stock-Taking Tags', cat: 'Mobile', repo: 'sto', desc: 'Aplikasi Android lantai produksi: login ID karyawan, cari part, cetak tag QR di thermal printer 58mm bawaan, scan balik dengan qty. Approval pembatalan & menu berbasis role.', tags: ['Flutter', 'SQLite', 'Thermal Printer', 'QR'] },
@@ -22,6 +23,7 @@ export const projects = [
 
 export const subdomains = [
   { sub: '', name: 'Portfolio (you are here)', desc: 'Halaman utama: 3D, animasi, AI.', url: 'https://efrino.web.id' },
+  { sub: 'opnamo', name: 'Opnamo', desc: 'SaaS stok opname: tag QR, scan HP offline, laporan selisih rupiah.', url: 'https://opnamo.efrino.web.id' },
   { sub: 'tools', name: 'Efrino Tools', desc: 'Background Remover AI, 3D Maker, PDF Merge, Compressor, QR: gratis & tanpa upload.', url: 'https://tools.efrino.web.id' },
   { sub: 'ai', name: 'AI Playground', desc: 'Chat AI layar penuh.', url: 'https://ai.efrino.web.id' },
   { sub: 'shop', name: 'Nayea Store', desc: 'E-commerce modest fashion, React + Supabase.', url: 'https://shop.efrino.web.id' },
