@@ -114,13 +114,13 @@ function scene3d() {
   const mat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     uniforms: {
-      uT: { value: 0 }, uMix: { value: 1 }, uMouse: { value: new THREE.Vector3(99, 99, 0) },
+      uT: { value: 0 }, uMix: { value: 1 }, uMouse: { value: new THREE.Vector2(9, 9) }, uAspect: { value: 1 },
       uSize: { value: 34 * renderer.getPixelRatio() }, uAlpha: { value: 1 },
       uA: { value: new THREE.Color(0x7c5cff) }, uB: { value: new THREE.Color(0x22d3ee) },
     },
     vertexShader: `
       attribute vec3 aTo; attribute float aSeed;
-      uniform float uT, uMix, uSize; uniform vec3 uMouse;
+      uniform float uT, uMix, uSize, uAspect; uniform vec2 uMouse;
       varying float vSeed; varying float vGlow;
       void main() {
         // Staggered morph with a swirl in the middle of the transition.
@@ -132,13 +132,14 @@ function scene3d() {
         p += normalize(p + .001) * mid * (.6 + aSeed);
         // Idle breathing.
         p += .04 * vec3(sin(uT * 1.3 + aSeed * 40.), cos(uT * 1.1 + aSeed * 30.), sin(uT * .9 + aSeed * 20.));
-        vec4 wp = modelMatrix * vec4(p, 1.);
-        // Push particles away from the cursor.
-        vec3 d = wp.xyz - uMouse; float dist = length(d.xy);
-        float f = smoothstep(1.1, 0., dist);
-        wp.xyz += normalize(d + .0001) * f * .55;
+        vec4 mv = modelViewMatrix * vec4(p, 1.);
+        // Cursor repulsion in SCREEN space: exact under the pointer whatever the shape's depth or tilt.
+        vec4 clip = projectionMatrix * mv;
+        vec2 dd = (clip.xy / clip.w - uMouse) * vec2(uAspect, 1.);
+        float f = smoothstep(.13, 0., length(dd));
+        // Move in view space by an amount that looks the same on screen at any depth.
+        mv.xy += normalize(dd + .0001) * f * .055 * -mv.z;
         vGlow = f;
-        vec4 mv = viewMatrix * wp;
         gl_Position = projectionMatrix * mv;
         gl_PointSize = uSize * (.35 + aSeed * .65) / -mv.z;
         vSeed = aSeed;
@@ -178,9 +179,10 @@ function scene3d() {
   const sio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) morph(e.target.id || 'top'); }), { rootMargin: '-45% 0px -50% 0px' });
   document.querySelectorAll('main > section').forEach(s => sio.observe(s));
 
-  const mouse = new THREE.Vector2(9, 9), target = new THREE.Vector2(), ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), hit = new THREE.Vector3();
+  const mouse = new THREE.Vector2(9, 9), target = new THREE.Vector2(), ZERO = new THREE.Vector2();
   addEventListener('pointermove', e => { mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); });
-  addEventListener('pointerleave', () => mouse.set(9, 9));
+  document.addEventListener('pointerout', e => { if (!e.relatedTarget) mouse.set(9, 9); });
+  addEventListener('blur', () => mouse.set(9, 9));
 
   const wide = () => innerWidth > 900;
   const resize = () => {
@@ -199,10 +201,11 @@ function scene3d() {
     mixT = Math.min(1, (performance.now() - morphStart) / 1800);
     mat.uniforms.uMix.value = reduced ? 1 : mixT;
     mat.uniforms.uT.value = reduced ? 0 : t;
-    target.lerp(mouse, 0.08);
+    target.lerp(mouse.x > 2 ? ZERO : mouse, 0.08); // pointer outside: ease back to centre
 
-    ray.setFromCamera(target, camera);
-    if (ray.ray.intersectPlane(plane, hit)) mat.uniforms.uMouse.value.copy(hit); else mat.uniforms.uMouse.value.set(99, 99, 0);
+    // Repulsion follows the pointer closely; the slower 'target' only drives the camera/rotation sway.
+    mat.uniforms.uMouse.value.lerp(mouse, 0.45);
+    mat.uniforms.uAspect.value = camera.aspect;
 
     // Text shapes face the camera; others spin slowly.
     const flat = ['work', 'projects', 'ai', 'contact'].includes(current);

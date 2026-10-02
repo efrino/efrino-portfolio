@@ -1,13 +1,16 @@
 // Edit this file to update portfolio content.
 export const typedRoles = [
-  'Industrial Digitalization', 'Full-Stack Web (Vue · React)', 'Flutter Mobile & Handheld', 'REST APIs & Real-time SSE', 'Local AI & Automation',
+  'Industrial Digitalization', 'SaaS Builder (Opnamo · Balasin)', 'Full-Stack Web (Vue · React)', 'Flutter Mobile & Handheld', 'AI Agents & Automation', 'Self-hosted DevOps (Docker · Coolify)',
 ];
 
 const gh = n => `https://github.com/efrino/${n}`;
 export const projects = [
   { icon: '💬', title: 'Balasin: WhatsApp AI SaaS', cat: 'AI', live: 'https://balasin.efrino.web.id', desc: 'Asisten WhatsApp multi-tenant untuk UMKM: LLM yang di-grounding ke katalog & FAQ toko, pesanan dengan harga dihitung ulang di server dan konfirmasi eksplisit pelanggan, handoff ke manusia, jam operasional, dan sesi WhatsApp tersimpan di PostgreSQL.', tags: ['Node.js', 'PostgreSQL', 'LLM', 'WhatsApp', 'Multi-tenant'] },
   { icon: '✅', title: 'Opnamo: Stock-Taking SaaS', cat: 'Industrial', live: 'https://opnamo.efrino.web.id', desc: 'Produk SaaS multi-tenant untuk stok opname UMKM: tag QR, scan kamera HP sebagai PWA offline-first dengan sinkronisasi idempoten, laporan selisih dalam rupiah, impor/ekspor Excel, dan cetak label A4/thermal 58mm.', tags: ['Node.js', 'PostgreSQL', 'PWA', 'IndexedDB', 'Multi-tenant'] },
-  { icon: '🧰', title: 'Efrino Tools', cat: 'Web', live: 'https://tools.efrino.web.id', desc: 'Kumpulan tools publik yang berjalan 100% di browser: Background Remover AI (ONNX via WebGPU/WASM), 3D Maker teks/logo → GLB/STL, batch Image Compressor, dan QR Generator. Nol upload, nol biaya server.', tags: ['WebGPU', 'WASM', 'Three.js', 'Canvas'] },
+  { icon: '🛰️', title: 'Radar: AI Career & Project Agent', cat: 'AI', private: true, desc: 'Agen pribadi yang memantau 6 sumber lowongan publik + leads jasa, menilai kecocokan dengan rubrik AI dan gerbang lokasi deterministik, lalu menyiapkan draft. Asisten tool-calling: buat PDF, siapkan email (wajib konfirmasi), kirim laporan ke WhatsApp & Telegram. PWA + iOS Shortcut untuk share dari LinkedIn.', tags: ['Node.js', 'SQLite', 'LLM Tool Calling', 'Baileys', 'PWA'] },
+  { icon: '🧰', title: 'Efrino Tools', cat: 'Web', live: 'https://tools.efrino.web.id', desc: 'Lima tools publik yang berjalan 100% di browser: Background Remover AI (ONNX via WebGPU/WASM), 3D Maker → GLB/STL, PDF Merge, batch Image Compressor, QR Generator. Nol upload, dioptimasi SEO dengan schema HowTo/FAQ.', tags: ['WebGPU', 'WASM', 'Three.js', 'pdf-lib', 'SEO'] },
+  { icon: '📊', title: 'Excel → Web App (live demo)', cat: 'Web', live: 'https://jasa.efrino.web.id/demo', desc: 'Upload file Excel/CSV dan dalam hitungan detik terbentuk web app: deteksi tipe kolom otomatis, KPI, grafik, tabel yang bisa dicari & diurutkan, form yang dibangkitkan dari tipe data, dan ekspor kembali ke Excel. Semua di browser.', tags: ['SheetJS', 'SVG charts', 'Vanilla JS'] },
+  { icon: '🖥️', title: 'Self-hosted Platform', cat: 'Backend', private: true, desc: 'Satu VPS menjalankan 6+ aplikasi production lewat Coolify: Traefik dengan SSL otomatis untuk 15+ subdomain, auto-deploy dari GitHub, PostgreSQL privat dengan backup harian, health check, gzip & security headers.', tags: ['Docker', 'Coolify', 'Traefik', 'PostgreSQL', 'Linux'] },
   { icon: '🏭', title: 'PPIC Smart Planner', cat: 'Industrial', private: true, desc: 'Flagship internal: menggantikan kalkulasi PPIC manual Excel. Pipeline 16 langkah dengan progress SSE live menghasilkan jadwal produksi welding harian, stock rolling, analisis achievement & alert delivery-miss.', tags: ['CodeIgniter 3', 'Vue 3', 'MySQL', 'SSE'] },
   { icon: '🏷️', title: 'STO Prep: Stock-Taking Tags', cat: 'Mobile', repo: 'sto', desc: 'Aplikasi Android lantai produksi: login ID karyawan, cari part, cetak tag QR di thermal printer 58mm bawaan, scan balik dengan qty. Approval pembatalan & menu berbasis role.', tags: ['Flutter', 'SQLite', 'Thermal Printer', 'QR'] },
   { icon: '🛍️', title: 'Nayea: Modest Fashion E-commerce', cat: 'Web', repo: 'nayea', live: 'https://shop.efrino.web.id', desc: 'Storefront + admin panel lengkap: katalog, cart, checkout, wishlist, live chat, manajemen order/pembayaran, ongkir serverless & email transaksi. Supabase dengan Row Level Security.', tags: ['React', 'Vite', 'Tailwind', 'Supabase', 'Vercel'] },
@@ -39,10 +42,11 @@ export const subdomains = [
 ];
 
 export const skills = {
-  Frontend: ['Vue 3', 'React', 'Tailwind CSS', 'Vite', 'TypeScript', 'Three.js'],
+  Frontend: ['Vue 3', 'React', 'Tailwind CSS', 'TypeScript', 'Three.js', 'PWA'],
   Backend: ['CodeIgniter', 'Express', 'Hapi', 'FastAPI', 'Flask', 'REST · JWT · SSE'],
   Mobile: ['Flutter', 'Dart', 'Riverpod', 'BLoC', 'Hive', 'Codemagic'],
   'Data & Cloud': ['MySQL', 'PostgreSQL', 'Supabase', 'Firebase', 'SQLite', 'Vercel'],
-  'AI & Ops': ['PyTorch', 'Transformers', 'LLM APIs', 'Docker', 'Traefik', 'Git'],
+  'AI & Agents': ['LLM tool calling', 'Groq · Gemini', 'PyTorch', 'Transformers', 'WebGPU / ONNX', 'WhatsApp bots'],
+  'DevOps': ['Docker', 'Coolify', 'Traefik', 'Linux VPS', 'CI/CD auto-deploy', 'Backups & monitoring'],
   Industry: ['PPIC', 'MRP / BOM', 'Inventory', 'SAP integration', 'Barcode / QR', 'Thermal printing'],
 };

@@ -24,5 +24,13 @@ FEATURED PROJECTS:
 - qc_model: FastAPI + PyTorch DETR object detection for stamping-part defect detection.
 - Internal: AI WhatsApp commerce bot (Node.js, Baileys, Supabase, Midtrans, Groq/Gemini/OpenRouter fallback); YouTube Shorts automation (Python, FFmpeg, TTS, YouTube API).
 
-SKILLS: JavaScript, TypeScript, PHP, Dart, Python, Java · Vue 3, React, Tailwind, Vite · CodeIgniter, Express, Hapi, FastAPI, Flask · Flutter (Riverpod, BLoC) · MySQL, PostgreSQL, Supabase, Firebase, SQLite · Docker, Vercel, Git · SSE, JWT, REST, SAP integration, barcode/QR, thermal printing, PyTorch.
+INDEPENDENT PRODUCTS (2026, side projects outside working hours, all live on his own VPS):
+- Opnamo (opnamo.efrino.web.id): multi-tenant stock-taking SaaS. QR tags, phone camera scanning as an offline-first PWA with idempotent sync, variance report in rupiah, Excel import/export, A4/58mm label printing. Node.js, Express, PostgreSQL, integration tests incl. tenant isolation.
+- Balasin (balasin.efrino.web.id): WhatsApp AI assistant SaaS for small businesses. Answers from the shop's catalog/FAQ, books orders only after explicit customer confirmation with server-side pricing, human handoff, opening hours. Node.js, PostgreSQL, Baileys, Groq/Gemini.
+- Radar: personal AI agent that monitors public job feeds, scores fit with an AI rubric plus a deterministic location check, and has a tool-calling assistant (PDF generation, confirmed email, WhatsApp/Telegram reports). PWA with iOS Shortcut sharing.
+- Efrino Tools (tools.efrino.web.id): five in-browser tools (AI background remover via WebGPU/WASM, 3D maker, PDF merge, image compressor, QR generator), SEO-optimised.
+- Excel → Web service (jasa.efrino.web.id) with a live demo that turns an uploaded spreadsheet into a web app.
+- Self-hosted platform: Docker + Coolify + Traefik on one VPS, automatic SSL for 15+ subdomains, GitHub auto-deploy, private PostgreSQL with daily backups.
+
+SKILLS: JavaScript, TypeScript, PHP, Dart, Python, Java · Vue 3, React, Tailwind, Vite · CodeIgniter, Express, Hapi, FastAPI, Flask · Flutter (Riverpod, BLoC) · MySQL, PostgreSQL, Supabase, Firebase, SQLite · Docker, Coolify, Traefik, Linux VPS, Vercel, Git, LLM tool calling (Groq, Gemini), PWA, WebGPU/WASM · SSE, JWT, REST, SAP integration, barcode/QR, thermal printing, PyTorch.
 DOMAIN KNOWLEDGE: PPIC, MRP, BOM, production scheduling, stock rolling, inventory, warehouse operations.
