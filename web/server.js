@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 // AI runs on free-tier hosted APIs (never on this VPS). Providers are tried in order.
 const PROVIDERS = [
   { name: 'groq', key: process.env.GROQ_API_KEY, model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b', url: 'https://api.groq.com/openai/v1/chat/completions', extra: { reasoning_effort: 'low' } },
-  { name: 'gemini', key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-2.5-flash', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' },
+  { name: 'gemini', key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-3.5-flash', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' },
 ].filter(p => p.key);
 const DOMAIN = process.env.DOMAIN || 'efrino.web.id';
 const PUBLIC = path.join(__dirname, 'public');

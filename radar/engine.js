@@ -18,9 +18,11 @@ export function prefilter(it, p = profile()) {
 }
 
 // --- LLM (Groq -> Gemini), JSON mode
+// Radar prefers Gemini (its own quota) so Groq stays free for Balasin's customer bots; Groq is the fallback.
+const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 const PROVIDERS = [
-  { key: process.env.GROQ_API_KEY, model: 'openai/gpt-oss-120b', url: 'https://api.groq.com/openai/v1/chat/completions', extra: { reasoning_effort: 'low' } },
-  { key: process.env.GEMINI_API_KEY, model: 'gemini-2.5-flash', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' },
+  { key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-3.5-flash', small: process.env.GEMINI_SMALL_MODEL || 'gemini-3.5-flash-lite', url: GEMINI },
+  { key: process.env.GROQ_API_KEY, model: 'openai/gpt-oss-120b', small: process.env.RADAR_SCORE_MODEL || 'openai/gpt-oss-20b', url: 'https://api.groq.com/openai/v1/chat/completions', extra: { reasoning_effort: 'low' } },
 ].filter(p => p.key);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Scoring uses the small model: its own Groq quota, so Radar never starves Balasin's customer bots.
@@ -28,7 +30,7 @@ export async function llm(messages, json = true, { small = false } = {}) {
   if (globalThis.__radarFakeLLM) return globalThis.__radarFakeLLM(messages);
   let err;
   for (const base of PROVIDERS) {
-    const p = small && base.url.includes('groq') ? { ...base, model: process.env.RADAR_SCORE_MODEL || 'openai/gpt-oss-20b' } : base;
+    const p = small ? { ...base, model: base.small } : base;
     for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const r = await fetch(p.url, { method: 'POST', signal: AbortSignal.timeout(60000), headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
@@ -51,7 +53,7 @@ export async function chatRaw(body) {
   if (globalThis.__radarFakeChat) return globalThis.__radarFakeChat(body);
   let err;
   // Big model first; on Groq rate limits fall back to the small model (separate quota) instead of failing.
-  const chain = PROVIDERS.flatMap(p => p.url.includes('groq') ? [p, { ...p, model: process.env.RADAR_SCORE_MODEL || 'openai/gpt-oss-20b' }] : [p]);
+  const chain = PROVIDERS.flatMap(p => [p, { ...p, model: p.small }]);
   for (const p of chain) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
