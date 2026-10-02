@@ -2,7 +2,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: radial-gradient(900px 500px at 90% -10%, rgba(124,92,255,.18), transparent 60%), var(--bg); color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif; line-height: 1.55; min-height: 100vh; }
 a { color: var(--accent2); text-decoration: none; } button, input, textarea, select { font: inherit; color: inherit; }
-.wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 16px calc(80px + env(safe-area-inset-bottom)); }
 .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
 .logo { font-family: var(--mono); font-weight: 600; font-size: 18px; } .logo b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-weight: 600; font-size: 14px; }
@@ -47,3 +47,7 @@ textarea:focus, input.in:focus { border-color: var(--accent); }
 .msg .tbl { overflow-x: auto; margin: 6px 0; } .msg table { border-collapse: collapse; font-size: 13.5px; } .msg th, .msg td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; } .msg th { background: rgba(255,255,255,.05); }
 .act { margin-top: 10px; padding: 12px; border-radius: 12px; border: 1px solid rgba(251,191,36,.45); background: rgba(251,191,36,.07); display: grid; gap: 6px; }
 .act pre { white-space: pre-wrap; font-size: 13px; }
+
+.steps { padding-left: 20px; display: grid; gap: 6px; color: #c9ccd8; font-size: 14px; }
+.steps code, .tok { font-family: var(--mono); font-size: 12.5px; background: rgba(0,0,0,.35); padding: 2px 6px; border-radius: 6px; word-break: break-all; }
+@media (max-width: 640px) { .top .actions .btn { padding: 8px 10px; font-size: 13px; } .stats { grid-template-columns: repeat(2, 1fr); } }

@@ -8,7 +8,7 @@ const api = async (p, opt = {}) => {
   if (!r.ok) throw new Error(j.error || r.status);
   return j;
 };
-const SRC = { remotive: 'Remotive', remoteok: 'Remote OK', weworkremotely: 'We Work Remotely', himalayas: 'Himalayas', arbeitnow: 'Arbeitnow', hn: 'Hacker News', manual: 'Manual', jasa: 'Lead jasa' };
+const SRC = { remotive: 'Remotive', remoteok: 'Remote OK', weworkremotely: 'We Work Remotely', himalayas: 'Himalayas', arbeitnow: 'Arbeitnow', hn: 'Hacker News', manual: 'Manual', jasa: 'Lead jasa', shared: 'Dibagikan dari HP' };
 const TABS = [['career', 'new', '🧑‍💻 Karier'], ['business', 'new', '💼 Bisnis'], ['all', 'shortlist', '⭐ Shortlist'], ['all', 'sent', '📨 Terkirim'], ['assistant', '', '🤖 Asisten']];
 let tab = 0;
 
@@ -21,7 +21,7 @@ function login() {
 async function main() {
   const s = await api('stats');
   $('#root').innerHTML = `<div class="wrap">
-    <div class="top"><div class="logo">efrino<b>.</b>radar</div><div class="actions"><button class="btn" id="paste">＋ Tempel lowongan/proyek</button><button class="btn" id="prof">⚙️ Profil</button><button class="btn" id="wa">💬 WhatsApp</button><button class="btn" id="tg">📲 Kirim ringkasan</button><button class="btn" id="run">⟳ Cari sekarang</button></div></div>
+    <div class="top"><div class="logo">efrino<b>.</b>radar</div><div class="actions"><button class="btn" id="paste">＋ Tempel lowongan/proyek</button><button class="btn" id="prof">⚙️ Profil</button><button class="btn" id="phone">📱 Pasang di HP</button><button class="btn" id="wa">💬 WhatsApp</button><button class="btn" id="tg">📲 Kirim ringkasan</button><button class="btn" id="run">⟳ Cari sekarang</button></div></div>
     <div class="stats"><div class="stat"><b>${s.good}</b><span>Peluang cocok baru</span></div><div class="stat"><b>${s.shortlist}</b><span>Shortlist</span></div><div class="stat"><b>${s.sent}</b><span>Terkirim</span></div>
       <div class="stat"><b>${s.total}</b><span>Dipantau (${s.unscored} antre dinilai)</span></div><div class="stat"><b style="font-size:15px">${s.lastRun ? new Date(s.lastRun).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '–'}</b><span>Pencarian terakhir</span></div></div>
     <div id="panel"></div>
@@ -31,6 +31,9 @@ async function main() {
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { tab = +b.dataset.i; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b)); list(); });
   $('#tg').onclick = async () => { try { const r = await api('digest', { method: 'POST' }); toast('Ringkasan terkirim ke ' + r.sent.join(' & ')); } catch (e) { toast(e.message); } };
   $('#wa').onclick = waPanel;
+  $('#phone').onclick = phonePanel;
+  const shared = new URLSearchParams(location.search).get('share'); // Android share target
+  if (shared) { history.replaceState({}, '', '/'); api('share', { method: 'POST', body: JSON.parse(shared) }).then(it => { tab = 2; toast(it.score != null ? `Tersimpan, skor ${it.score}` : 'Tersimpan di Shortlist: tekan Lengkapi untuk dinilai'); main(); }).catch(e => toast(e.message)); }
   $('#run').onclick = async e => { e.target.disabled = true; await api('run', { method: 'POST' }); toast('Mencari di latar belakang… muat ulang beberapa menit lagi'); };
   $('#paste').onclick = () => { $('#panel').innerHTML = `<form class="card" id="mf"><b>Tempel lowongan atau permintaan proyek</b><p style="color:var(--muted);font-size:14px">Dari LinkedIn, Glints, JobStreet, Projects.co.id, grup WhatsApp/Facebook, dsb. Radar menilai & menyiapkan draft.</p>
       <input class="in" name="url" placeholder="Link (opsional)"><textarea name="text" rows="8" placeholder="Tempel seluruh isi lowongan di sini…"></textarea><div class="actions"><button class="btn primary">Nilai & simpan</button><button type="button" class="btn" id="cx">Batal</button></div></form>`;
@@ -47,6 +50,27 @@ async function main() {
     $('#cx').onclick = () => $('#panel').innerHTML = '';
     $('#pf').onsubmit = async e => { e.preventDefault(); await api('profile', { method: 'PUT', body: Object.fromEntries(new FormData(e.target)) }); toast('Profil disimpan'); $('#panel').innerHTML = ''; list(); }; };
   list();
+}
+
+async function phonePanel() {
+  const { token, endpoint } = await api('share-token');
+  const ios = /iPhone|iPad/.test(navigator.userAgent);
+  $('#panel').innerHTML = `<div class="card"><b>📱 Radar di HP</b>
+    <div><b style="font-size:14px">1. Jadikan seperti aplikasi</b><ol class="steps"><li>${ios ? 'Buka radar.efrino.web.id di <b>Safari</b>' : 'Buka di Chrome'} lalu login.</li><li>${ios ? 'Ketuk tombol <b>Bagikan</b> (kotak dengan panah ke atas) → <b>Tambah ke Layar Utama</b>' : 'Menu ⋮ → <b>Instal aplikasi</b>'}.</li><li>Buka Radar dari ikon di layar utama: tampil layar penuh seperti aplikasi.</li></ol></div>
+    <div><b style="font-size:14px">2. Kirim lowongan dari LinkedIn lewat "Bagikan" (iPhone: pakai Pintasan)</b>
+    <ol class="steps"><li>Buka app <b>Pintasan / Shortcuts</b> → <b>+</b> → beri nama <b>Kirim ke Radar</b>.</li>
+      <li>Ketuk ⓘ (info) → aktifkan <b>Tampilkan di Lembar Bagikan</b>; jenis input: <b>URL</b> dan <b>Teks</b>.</li>
+      <li>Tambah tindakan <b>Dapatkan Isi URL</b> (Get Contents of URL): URL <code>${esc(endpoint)}</code>, Metode <b>POST</b>,
+        Header <code>Authorization</code> = <code>Bearer ${esc(token)}</code>, Isi Permintaan <b>JSON</b> dengan bidang <code>url</code> = <i>Input Pintasan</i> dan <code>text</code> = <i>Input Pintasan</i>.</li>
+      <li>Tambah <b>Dapatkan Nilai Kamus</b> (Get Dictionary Value) kunci <code>message</code>, lalu <b>Tampilkan Pemberitahuan</b> dengan hasilnya.</li>
+      <li>Di LinkedIn: buka lowongan → <b>Bagikan</b> → <b>Lainnya</b> → <b>Kirim ke Radar</b>. Selesai, masuk ke Shortlist.</li></ol>
+    <p style="color:var(--muted);font-size:13px">Android: setelah Instal aplikasi, "Radar" otomatis muncul di menu Bagikan, tidak perlu Pintasan.</p>
+    <div class="actions"><button class="btn" id="cpTok">📋 Salin token</button><button class="btn" id="cpUrl">📋 Salin alamat</button><button class="btn" id="newTok">Buat token baru</button><button class="btn" id="cx2">Tutup</button></div>
+    <p style="color:var(--muted);font-size:12.5px">Token ini seperti kunci: siapa pun yang punya bisa menambah item ke Radar Anda (tidak bisa membaca data). Ganti bila bocor.</p></div></div>`;
+  $('#cpTok').onclick = () => { navigator.clipboard.writeText('Bearer ' + token); toast('Token disalin (sudah termasuk "Bearer ")'); };
+  $('#cpUrl').onclick = () => { navigator.clipboard.writeText(endpoint); toast('Alamat disalin'); };
+  $('#newTok').onclick = async () => { if (!confirm('Buat token baru? Pintasan lama berhenti bekerja.')) return; await api('share-token', { method: 'POST' }); phonePanel(); toast('Token baru dibuat: perbarui di Pintasan'); };
+  $('#cx2').onclick = () => $('#panel').innerHTML = '';
 }
 
 let waTimer;
@@ -88,11 +112,19 @@ async function list() {
     ${it.why?.length ? `<div class="chips">${it.why.slice(0, 4).map(w => `<span>✓ ${esc(w)}</span>`).join('')}</div>` : ''}
     ${it.concerns?.length ? `<div class="chips warn">${it.concerns.slice(0, 3).map(w => `<span>! ${esc(w)}</span>`).join('')}</div>` : ''}
     <div class="draft"></div>
-    <div class="actions"><button class="btn" data-a="draft">✍️ ${it.has_draft ? 'Lihat draft' : 'Buat draft'}</button>
+    ${it.source === 'shared' && (!it.score && it.score !== 0) ? '<div class="complete"></div>' : ''}
+    <div class="actions">${it.source === 'shared' ? '<button class="btn" data-a="complete">📝 Lengkapi</button>' : ''}<button class="btn" data-a="draft">✍️ ${it.has_draft ? 'Lihat draft' : 'Buat draft'}</button>
       ${status !== 'shortlist' ? '<button class="btn" data-a="shortlist">⭐ Shortlist</button>' : ''}${status !== 'sent' ? '<button class="btn" data-a="sent">📨 Sudah saya kirim</button>' : ''}<button class="btn" data-a="archived">Arsipkan</button></div></div>`).join('')
     : `<div class="empty">${status === 'new' ? 'Belum ada peluang di atas skor minimal. Radar mencari otomatis tiap 6 jam, atau klik "Cari sekarang".' : 'Kosong.'}</div>`;
   document.querySelectorAll('.item').forEach(el => el.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     const id = el.dataset.id, a = b.dataset.a;
+    if (a === 'complete') {
+      const box = el.querySelector('.draft');
+      box.innerHTML = `<textarea rows="8" placeholder="Buka link lowongan, salin seluruh isinya, tempel di sini…"></textarea><div class="actions" style="margin-top:6px"><button class="btn primary" data-x="go">Nilai sekarang</button></div>`;
+      box.querySelector('[data-x=go]').onclick = async e => { e.target.disabled = true; e.target.textContent = 'Menilai…';
+        try { const r = await api(`items/${id}/complete`, { method: 'POST', body: { text: box.querySelector('textarea').value } }); toast(`Skor ${r.score}`); list(); } catch (err) { toast(err.message); e.target.disabled = false; e.target.textContent = 'Nilai sekarang'; } };
+      return;
+    }
     if (a === 'draft') {
       b.disabled = true; b.textContent = 'Menulis…';
       try {
@@ -163,3 +195,5 @@ async function chat() {
   $('#creset').onclick = async () => { await api('assistant', { method: 'DELETE' }); chat(); };
   $('#ct').focus();
 }
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

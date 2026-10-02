@@ -3,12 +3,15 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, getSetting, setSetting } from './db.js';
-import { runAll, score, draft, addManual, digest, profile, importLeads } from './engine.js';
+import { runAll, score, draft, addManual, addShared, completeItem, digest, profile, importLeads } from './engine.js';
 import { waStart, waStatus, waLogout, waSend, waBoot } from './wa.js';
 import { ask, history, reset } from './assistant.js';
 import { fileInfo, filePath, confirmAction, cancelAction } from './tools.js';
 
 const PASSWORD = process.env.RADAR_PASSWORD || '';
+// Long random token for the iOS Shortcut (sent as a Bearer header); stored once, shown in the dashboard.
+const shareToken = () => { let t = getSetting('shareToken', null); if (!t) { t = crypto.randomBytes(24).toString('base64url'); setSetting('shareToken', t); } return t; };
+const bearerOk = req => { const h = String(req.headers.authorization || ''); const t = shareToken(); return h.length === t.length + 7 && crypto.timingSafeEqual(Buffer.from(h), Buffer.from('Bearer ' + t)); };
 const SECRET = crypto.createHash('sha256').update('radar:' + PASSWORD).digest();
 const PUBLIC = path.join(import.meta.dirname, 'public');
 const sign = v => `${v}.${crypto.createHmac('sha256', SECRET).update(v).digest('base64url')}`;
@@ -35,6 +38,13 @@ const server = http.createServer(async (req, res) => {
       res.setHeader('Set-Cookie', `radar=${sign(String(Date.now() + 30 * 86400e3))}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${30 * 86400}`);
       return json(res, 200, { ok: true });
     }
+    // Share endpoint: the iOS Shortcut authenticates with the share token (no cookie on Shortcuts).
+    if (url.pathname === '/api/share' && req.method === 'POST' && bearerOk(req)) {
+      try { const it = await addShared(await body(req)); return json(res, 201, { ok: true, id: it.id, title: it.title, score: it.score, duplicate: !!it.duplicate, message: it.duplicate ? `Sudah ada di Radar: ${it.title}` : it.score !== null ? `Tersimpan, skor ${it.score}: ${it.title}` : `Tersimpan di Shortlist. Lengkapi deskripsinya untuk dinilai.` }); }
+      catch (e) { return json(res, 400, { error: e.message }); }
+    }
+    // Android Web Share Target lands here (GET) -> open the app with the share prefilled.
+    if (url.pathname === '/share') { res.writeHead(302, { Location: `/?share=${encodeURIComponent(JSON.stringify({ url: url.searchParams.get('url') || '', title: url.searchParams.get('title') || '', text: url.searchParams.get('text') || '' }))}` }); return res.end(); }
     if (url.pathname.startsWith('/api/')) {
       if (!verify(cookieOf(req))) return json(res, 401, { error: 'Login dulu.' });
       if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'radar') return json(res, 403, { error: 'Ditolak.' });
@@ -52,6 +62,9 @@ const server = http.createServer(async (req, res) => {
           runs: db.prepare('SELECT at, source, fetched, added, error FROM runs ORDER BY id DESC LIMIT 7').all() });
       }
       if (p === 'profile' && req.method === 'GET') return json(res, 200, profile());
+      if (p === 'share' && req.method === 'POST') { try { return json(res, 201, parse(await addShared(await body(req)))); } catch (e) { return json(res, 400, { error: e.message }); } }
+      if (p === 'share-token' && req.method === 'GET') return json(res, 200, { token: shareToken(), endpoint: `https://${req.headers.host}/api/share` });
+      if (p === 'share-token' && req.method === 'POST') { setSetting('shareToken', null); db.prepare("DELETE FROM settings WHERE key = 'shareToken'").run(); return json(res, 200, { token: shareToken() }); }
       if (p === 'profile' && req.method === 'PUT') { const b = await body(req); setSetting('profile', { about: String(b.about || '').slice(0, 8000), include: String(b.include || ''), exclude: String(b.exclude || ''), wants: String(b.wants || '').slice(0, 1000), minScore: Math.max(0, Math.min(100, Number(b.minScore) || 60)) }); return json(res, 200, { ok: true }); }
       if (p === 'digest' && req.method === 'POST') { const sent = await digest({ force: true }); return json(res, sent.length ? 200 : 400, sent.length ? { sent } : { error: 'Belum ada kanal aktif (Telegram/WhatsApp) atau belum ada peluang.' }); }
       if (p === 'assistant' && req.method === 'GET') return json(res, 200, history());
@@ -68,13 +81,14 @@ const server = http.createServer(async (req, res) => {
       if (p === 'wa/test' && req.method === 'POST') { try { await waSend('✅ Tes dari Radar: laporan peluang harian akan dikirim ke nomor ini.'); return json(res, 200, { ok: true }); } catch (e) { return json(res, 409, { error: e.message }); } }
       if (p === 'run' && req.method === 'POST') { runAll().then(r => console.log('[run] manual', r)).catch(e => console.error(e)); return json(res, 202, { ok: true }); }
       if (p === 'manual' && req.method === 'POST') { const b = await body(req); if (String(b.text || '').trim().length < 40) return json(res, 400, { error: 'Tempel teks lowongan/proyek (min. 40 karakter).' }); return json(res, 201, parse(await addManual(String(b.text), String(b.url || '')))); }
-      const m = p.match(/^items\/(\d+)(?:\/(draft|status|rescore))?$/);
+      const m = p.match(/^items\/(\d+)(?:\/(draft|status|rescore|complete))?$/);
       if (m) {
         const it = db.prepare('SELECT * FROM items WHERE id = ?').get(Number(m[1]));
         if (!it) return json(res, 404, { error: 'Tidak ditemukan.' });
         if (!m[2]) return json(res, 200, parse(it));
         if (m[2] === 'draft') { const b = await body(req); if (b.text !== undefined) { db.prepare('UPDATE items SET draft = ? WHERE id = ?').run(String(b.text).slice(0, 8000), it.id); return json(res, 200, { draft: b.text }); } return json(res, 200, { draft: await draft(it, b.lang) }); }
         if (m[2] === 'status') { const b = await body(req); if (!['new', 'shortlist', 'sent', 'archived'].includes(b.status)) return json(res, 400, { error: 'Status salah.' }); db.prepare('UPDATE items SET status = ? WHERE id = ?').run(b.status, it.id); return json(res, 200, { ok: true }); }
+        if (m[2] === 'complete') { const b = await body(req); try { return json(res, 200, parse(await completeItem(it.id, b.text))); } catch (e) { return json(res, 400, { error: e.message }); } }
         if (m[2] === 'rescore') { await score(it); return json(res, 200, parse(db.prepare('SELECT * FROM items WHERE id = ?').get(it.id))); }
       }
       return json(res, 404, { error: 'Tidak ada.' });
@@ -83,7 +97,7 @@ const server = http.createServer(async (req, res) => {
     let f = url.pathname === '/' ? '/index.html' : url.pathname;
     const fp = path.normalize(path.join(PUBLIC, f));
     if (!fp.startsWith(PUBLIC) || !fs.existsSync(fp)) { res.writeHead(404); return res.end('Not found'); }
-    res.writeHead(200, { 'content-type': { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(fp)] || 'application/octet-stream', 'cache-control': 'no-cache' });
+    res.writeHead(200, { 'content-type': { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml' }[path.extname(fp)] || 'application/octet-stream', 'cache-control': 'no-cache' });
     fs.createReadStream(fp).pipe(res);
   } catch (e) { console.error(e); if (!res.headersSent) json(res, 500, { error: e.message.slice(0, 200) }); }
 });

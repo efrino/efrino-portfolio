@@ -141,6 +141,35 @@ export function importLeads(file = process.env.LEADS_FILE || '/leads/leads.jsonl
   return n;
 }
 
+// Shared from the phone (iOS Shortcut / Android share). LinkedIn etc. are never fetched: store link + title,
+// score only when there is enough text, otherwise ask the owner to paste the description.
+export async function addShared({ url = '', title = '', text = '' }) {
+  const body = [title, text].filter(Boolean).join('\n').trim();
+  const link = String(url || (body.match(/https?:\/\/\S+/) || [])[0] || '').slice(0, 1000);
+  if (!link && body.length < 40) throw new Error('Kirim link atau teks lowongan.');
+  const dup = link && db.prepare(`SELECT id FROM items WHERE url = ?`).get(link);
+  if (dup) return { ...db.prepare('SELECT * FROM items WHERE id = ?').get(dup.id), duplicate: true };
+  const host = link ? new URL(link).hostname.replace(/^www\./, '') : 'tempel';
+  const id = `s-${Date.now()}`;
+  const clean = body.replace(link, '').trim();
+  addItem('shared', { ext_id: id, title: (clean.split('\n')[0] || `Lowongan dari ${host}`).slice(0, 160), company: '', url: link, location: '', tags: `shared, ${host}`, description: clean.slice(0, 5000), posted_at: new Date().toISOString() }, 'shortlist');
+  const it = db.prepare('SELECT * FROM items WHERE source = ? AND ext_id = ?').get('shared', id);
+  if (clean.length >= 200) await score(it).catch(() => {});
+  else db.prepare(`UPDATE items SET summary = ? WHERE id = ?`).run('Deskripsi belum lengkap: buka link, salin isi lowongan, lalu tekan "Lengkapi" agar AI bisa menilai.', it.id);
+  return db.prepare('SELECT * FROM items WHERE id = ?').get(it.id);
+}
+
+export async function completeItem(id, text) {
+  const it = db.prepare('SELECT * FROM items WHERE id = ?').get(Number(id));
+  if (!it) throw new Error('Tidak ditemukan.');
+  const t = String(text || '').trim();
+  if (t.length < 80) throw new Error('Tempel isi lowongan (min. 80 karakter).');
+  const first = t.split('\n')[0].slice(0, 160);
+  db.prepare('UPDATE items SET description = ?, title = CASE WHEN title LIKE \'Lowongan dari %\' THEN ? ELSE title END WHERE id = ?').run(t.slice(0, 5000), first, it.id);
+  await score(db.prepare('SELECT * FROM items WHERE id = ?').get(it.id));
+  return db.prepare('SELECT * FROM items WHERE id = ?').get(it.id);
+}
+
 export async function addManual(text, url = '') {
   const first = text.trim().split('\n')[0].slice(0, 160);
   const id = `m-${Date.now()}`;
