@@ -173,7 +173,8 @@ footer { text-align: center; padding: 30px; color: var(--muted); font-family: va
   nav { gap: 2px; }
   nav a:not(.logo) { padding: 8px 10px; font-size: 13px; }
   /* Keep the nav to one line on phones: hide secondary links. */
-  nav a[href="#about"], nav a[href="#work"], nav a[href="#eco"] { display: none; }
+  nav a[href="#about"], nav a[href="#work"], nav a[href="#eco"], nav a[href^="https://tools"] { display: none; }
+  nav .lang { padding: 6px 10px; margin-left: 0; }
   .glow { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -181,3 +182,6 @@ footer { text-align: center; padding: 30px; color: var(--muted); font-family: va
   .reveal { opacity: 1; transform: none; }
   .hero h1 .line span { transform: none; }
 }
+
+nav .lang { margin-left: 4px; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(124,92,255,.5); background: rgba(124,92,255,.15); color: var(--text); font-family: var(--mono); font-size: 12.5px; cursor: pointer; }
+nav .lang:hover { background: rgba(124,92,255,.3); }

@@ -10,6 +10,9 @@
 <meta property="og:url" content="https://efrino.web.id">
 <meta name="theme-color" content="#07080d">
 <link rel="icon" href="favicon.svg">
+<link rel="alternate" hreflang="id" href="https://efrino.web.id/?lang=id">
+<link rel="alternate" hreflang="en" href="https://efrino.web.id/?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://efrino.web.id/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -28,6 +31,7 @@
   <a href="#eco">Ecosystem</a>
   <a href="https://tools.efrino.web.id">Tools ↗</a>
   <a href="#contact">Contact</a>
+  <button class="lang" id="lang" type="button" aria-label="Switch language">EN</button>
 </nav>
 
 <main id="top">
@@ -36,29 +40,29 @@
     <h1><span class="line"><span>Efrino Wahyu</span></span><span class="line"><span class="grad">Eko Pambudi.</span></span></h1>
     <p class="typed"><b>Software Engineer</b> — <span id="typed"></span><span class="caret"></span></p>
     <div class="cta">
-      <a class="btn primary magnetic" href="#projects">Lihat Proyek →</a>
-      <a class="btn magnetic" href="#ai">🤖 Tanya AI tentang saya</a>
+      <a data-i18n="t0" class="btn primary magnetic" href="#projects">Lihat Proyek →</a>
+      <a data-i18n="t1" class="btn magnetic" href="#ai">🤖 Tanya AI tentang saya</a>
       <a class="btn magnetic" href="mailto:efrinowep@gmail.com">✉️ Hire me</a>
     </div>
     <div class="stats">
       <div><b data-count="3.95">0</b><span>GPA / 4.00 · Polines</span></div>
       <div><b data-count="16">0</b><span>step PPIC pipeline, live SSE</span></div>
       <div><b data-count="50" data-suffix="+">0</b><span>public repositories</span></div>
-      <div><b data-count="6">0</b><span>aplikasi live di server sendiri</span></div>
+      <div><b data-count="6">0</b><span data-i18n="t2">aplikasi live di server sendiri</span></div>
     </div>
-    <p class="scroll-hint">↓ scroll · gerakkan mouse untuk memutar scene 3D</p>
+    <p data-i18n="t3" class="scroll-hint">↓ scroll · gerakkan mouse untuk memutar scene 3D</p>
   </section>
 
   <section id="about">
     <p class="eyebrow">01 · About</p>
     <div class="about-grid">
       <div class="reveal">
-        <h2>Software yang <span class="grad">berjalan di operasi nyata.</span></h2>
-        <p class="lead">Saya membangun perangkat lunak untuk perencanaan produksi, gudang, handheld lantai produksi, dan toko online, yaitu mengubah proses bisnis berbasis Excel menjadi backend yang andal, dashboard yang bersih, dan aplikasi mobile yang dipakai setiap hari.</p>
+        <h2 data-i18n="t4">Software yang <span class="grad">berjalan di operasi nyata.</span></h2>
+        <p data-i18n="t5" class="lead">Saya membangun perangkat lunak untuk perencanaan produksi, gudang, handheld lantai produksi, dan toko online, yaitu mengubah proses bisnis berbasis Excel menjadi backend yang andal, dashboard yang bersih, dan aplikasi mobile yang dipakai setiap hari.</p>
         <ul class="bring">
-          <li><b>🏭 Industry-grade delivery</b><span>PPIC planning, stock-taking, inventory & Andon systems dipakai harian oleh tim pabrik.</span></li>
-          <li><b>⚡ Real-time systems</b><span>Pipeline 16 langkah dengan progress live via Server-Sent Events.</span></li>
-          <li><b>📱 End-to-end ownership</b><span>Dari skema database & REST API sampai Flutter di Android handheld & iOS.</span></li>
+          <li><b>🏭 Industry-grade delivery</b><span data-i18n="t6">PPIC planning, stock-taking, inventory & Andon systems dipakai harian oleh tim pabrik.</span></li>
+          <li><b>⚡ Real-time systems</b><span data-i18n="t7">Pipeline 16 langkah dengan progress live via Server-Sent Events.</span></li>
+          <li><b>📱 End-to-end ownership</b><span data-i18n="t8">Dari skema database & REST API sampai Flutter di Android handheld & iOS.</span></li>
           <li><b>🔌 Integration mindset</b><span>SAP, thermal printer, barcode/QR scanner, Google Drive, Supabase.</span></li>
         </ul>
       </div>
@@ -82,30 +86,30 @@
 
   <section id="work">
     <p class="eyebrow">02 · Experience</p>
-    <h2 class="reveal">Dari spreadsheet ke <span class="grad">sistem produksi.</span></h2>
+    <h2 data-i18n="t9" class="reveal">Dari spreadsheet ke <span class="grad">sistem produksi.</span></h2>
     <div class="timeline">
       <div class="job reveal">
         <p class="when">Nov 2025 — Present · Bekasi</p>
         <h3>IT Programmer</h3>
         <p class="at">PT Mekar Armada Jaya</p>
         <ul>
-          <li>Membangun <b>PPIC Smart Planner</b>: memindahkan perencanaan produksi Welding dari Excel ke web (CodeIgniter 3, Vue 3, MySQL).</li>
-          <li>Merancang <b>pipeline otomatis 16 langkah</b> yang menggabungkan 6 sumber data (part master, forecast MDFO, delivery order, stok, kalender kerja, achievement shift) menjadi satu rencana harian per part per shift.</li>
-          <li>Streaming progress <b>real-time via Server-Sent Events</b> + <b>CMS Vue 3</b> agar planner bisa mengubah parameter & formula tanpa ubah kode.</li>
-          <li>Merilis aplikasi <b>stock-taking, goods receiving & warehouse scanning</b> di Android handheld dengan thermal printer bawaan.</li>
+          <li data-i18n="t10">Membangun <b>PPIC Smart Planner</b>: memindahkan perencanaan produksi Welding dari Excel ke web (CodeIgniter 3, Vue 3, MySQL).</li>
+          <li data-i18n="t11">Merancang <b>pipeline otomatis 16 langkah</b> yang menggabungkan 6 sumber data (part master, forecast MDFO, delivery order, stok, kalender kerja, achievement shift) menjadi satu rencana harian per part per shift.</li>
+          <li data-i18n="t12">Streaming progress <b>real-time via Server-Sent Events</b> + <b>CMS Vue 3</b> agar planner bisa mengubah parameter & formula tanpa ubah kode.</li>
+          <li data-i18n="t13">Merilis aplikasi <b>stock-taking, goods receiving & warehouse scanning</b> di Android handheld dengan thermal printer bawaan.</li>
         </ul>
         <div class="pipeline" id="pipeline"></div>
         <p class="pipeline-label" id="pipelineLabel">pipeline: idle</p>
       </div>
       <div class="job reveal">
-        <p class="when">2026 — Present · Proyek mandiri</p>
+        <p data-i18n="t14" class="when">2026 — Present · Proyek mandiri</p>
         <h3>Independent Builder</h3>
-        <p class="at">Produk & layanan sendiri, di luar jam kerja</p>
+        <p data-i18n="t15" class="at">Produk & layanan sendiri, di luar jam kerja</p>
         <ul>
-          <li>Merilis <b>Opnamo</b> (SaaS stok opname, PWA offline-first) dan <b>Balasin</b> (asisten WhatsApp AI untuk UMKM): multi-tenant, PostgreSQL, diuji dengan test integrasi termasuk isolasi data antar pelanggan.</li>
-          <li>Membangun <b>Radar</b>, agen AI pribadi dengan tool calling (PDF, email berkonfirmasi, laporan WhatsApp/Telegram) untuk mencari peluang kerja & proyek.</li>
-          <li>Mengelola <b>platform self-hosted</b>: 6+ aplikasi di satu VPS via Docker + Coolify, SSL otomatis, auto-deploy, backup database harian.</li>
-          <li>Merilis <b>tools publik</b> berbasis WebGPU/WASM tanpa upload dan layanan <b>Excel → Web</b> dengan demo interaktif.</li>
+          <li data-i18n="t16">Merilis <b>Opnamo</b> (SaaS stok opname, PWA offline-first) dan <b>Balasin</b> (asisten WhatsApp AI untuk UMKM): multi-tenant, PostgreSQL, diuji dengan test integrasi termasuk isolasi data antar pelanggan.</li>
+          <li data-i18n="t17">Membangun <b>Radar</b>, agen AI pribadi dengan tool calling (PDF, email berkonfirmasi, laporan WhatsApp/Telegram) untuk mencari peluang kerja & proyek.</li>
+          <li data-i18n="t18">Mengelola <b>platform self-hosted</b>: 6+ aplikasi di satu VPS via Docker + Coolify, SSL otomatis, auto-deploy, backup database harian.</li>
+          <li data-i18n="t19">Merilis <b>tools publik</b> berbasis WebGPU/WASM tanpa upload dan layanan <b>Excel → Web</b> dengan demo interaktif.</li>
         </ul>
       </div>
       <div class="job reveal">
@@ -113,7 +117,7 @@
         <h3>External Auditor (Internship)</h3>
         <p class="at">KAP Gatot Permadi, Azwir & Abimail</p>
         <ul>
-          <li>Verifikasi laporan keuangan, penelusuran dokumen & rekonsiliasi data: fondasi ketelitian data yang kini saya bawa ke sistem ERP/PPIC.</li>
+          <li data-i18n="t20">Verifikasi laporan keuangan, penelusuran dokumen & rekonsiliasi data: fondasi ketelitian data yang kini saya bawa ke sistem ERP/PPIC.</li>
         </ul>
       </div>
       <div class="job reveal">
@@ -126,23 +130,23 @@
 
   <section id="projects">
     <p class="eyebrow">03 · Selected Work</p>
-    <h2 class="reveal">Proyek yang <span class="grad">dipakai orang sungguhan.</span></h2>
+    <h2 data-i18n="t21" class="reveal">Proyek yang <span class="grad">dipakai orang sungguhan.</span></h2>
     <div class="filters" id="filters"></div>
     <div class="projects" id="projectGrid"></div>
   </section>
 
   <section id="ai">
     <p class="eyebrow">04 · AI Playground</p>
-    <h2 class="reveal">Wawancarai <span class="grad">AI saya.</span></h2>
-    <p class="lead reveal">Asisten AI (GPT-OSS 120B via Groq, fallback Gemini) yang di-grounding ke CV saya. Streaming token dari backend Node saya sendiri, rate limiting, dan API key yang aman di server. Versi layar penuh: <a class="grad" href="https://ai.efrino.web.id">ai.efrino.web.id ↗</a></p>
+    <h2 data-i18n="t22" class="reveal">Wawancarai <span class="grad">AI saya.</span></h2>
+    <p data-i18n="t26" class="lead reveal">Asisten AI (GPT-OSS 120B via Groq, fallback Gemini) yang di-grounding ke CV saya. Streaming token dari backend Node saya sendiri, rate limiting, dan API key yang aman di server. Versi layar penuh: <a class="grad" href="https://ai.efrino.web.id">ai.efrino.web.id ↗</a></p>
     <div id="chatMount" class="reveal" style="margin-top:36px"></div>
     <p class="ai-note">stack: Groq → Gemini fallback · Node.js streaming proxy · rate limiting · Traefik · Docker · Coolify</p>
   </section>
 
   <section id="eco">
     <p class="eyebrow">05 · Ecosystem</p>
-    <h2 class="reveal">Satu domain, <span class="grad">banyak dunia.</span></h2>
-    <p class="lead reveal">Setiap subdomain <code>*.efrino.web.id</code> adalah pintu ke proyek live, dirouting oleh Traefik di VPS saya sendiri dengan SSL otomatis.</p>
+    <h2 data-i18n="t23" class="reveal">Satu domain, <span class="grad">banyak dunia.</span></h2>
+    <p data-i18n="t24" class="lead reveal">Setiap subdomain <code>*.efrino.web.id</code> adalah pintu ke proyek live, dirouting oleh Traefik di VPS saya sendiri dengan SSL otomatis.</p>
     <div class="eco" id="eco"></div>
   </section>
 
@@ -156,7 +160,7 @@
   <section id="contact" class="contact">
     <p class="eyebrow">07 · Contact</p>
     <h2 class="reveal">Let's build<br><span class="grad">something real.</span></h2>
-    <p class="lead reveal" style="margin:0 auto">Terbuka untuk posisi Software Engineer, Full-Stack, atau Mobile, onsite di Jabodetabek maupun remote.</p>
+    <p data-i18n="t25" class="lead reveal" style="margin:0 auto">Terbuka untuk posisi Software Engineer, Full-Stack, atau Mobile, onsite di Jabodetabek maupun remote.</p>
     <div class="cta">
       <a class="btn primary magnetic" href="mailto:efrinowep@gmail.com">✉️ efrinowep@gmail.com</a>
       <a class="btn magnetic" href="https://wa.me/6285184084989" target="_blank" rel="noopener">💬 WhatsApp</a>

@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.min.js';
 import { typedRoles, projects, subdomains, skills } from './data.js';
 import { mountChat, chatMarkup } from './chat.js';
+import { initialLang, applyStatic } from './i18n.js';
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
@@ -10,74 +11,80 @@ const N = 12000;
 
 // Each generator fills N points (x, y, z) roughly within a radius of ~3.
 const rnd = (a = 1) => (Math.random() - 0.5) * 2 * a;
+// Each generator maps particle index i -> [x, y, z] (roughly within radius 3). Forms are kept crisp:
+// most particles sit exactly on edges/surfaces, only a small share adds soft glow.
+const TAU = Math.PI * 2, gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
 const SHAPES = {
+  // Four logarithmic arms + a dense bright core.
   galaxy(i) {
-    const arm = i % 3, r = Math.pow(Math.random(), 0.7) * 3.4, a = arm * (Math.PI * 2 / 3) + r * 1.15;
-    const s = 0.35 * (1 - r / 5);
-    return [Math.cos(a) * r + rnd(s), rnd(0.12 + s * 0.4), Math.sin(a) * r + rnd(s)];
+    if (i % 6 === 0) { const r = Math.pow(Math.random(), 2.2) * 0.9, a = Math.random() * TAU; return [Math.cos(a) * r, gauss() * 0.18 * (1 - r), Math.sin(a) * r]; }
+    const arm = i % 4, t = Math.pow(Math.random(), 0.8), r = 0.35 + t * 3.1, a = arm * TAU / 4 + Math.log(r + 1) * 2.6;
+    const w = 0.12 + t * 0.32;
+    return [Math.cos(a) * r + gauss() * w, gauss() * 0.06, Math.sin(a) * r + gauss() * w];
   },
+  // Two clean strands with evenly spaced base-pair rungs.
+  helix(i) {
+    const turns = 3.2, h = 6.4, R = 1.15;
+    if (i % 3 === 2) { const k = Math.floor(Math.random() * 44), u = (k + 0.5) / 44, a = u * TAU * turns, y = (u - 0.5) * h, s = rnd(1);
+      return [Math.cos(a) * R * s, y + rnd(0.015), Math.sin(a) * R * s]; }
+    const u = Math.random(), a = u * TAU * turns + (i % 3 ? Math.PI : 0), y = (u - 0.5) * h;
+    return [Math.cos(a) * R + rnd(0.04), y + rnd(0.04), Math.sin(a) * R + rnd(0.04)];
+  },
+  // Precise gear: trapezoid teeth outline, rim, 6 spokes and a hub, extruded slightly.
   gear(i) {
-    const teeth = 14, z = rnd(0.35);
-    if (i % 5 === 0) { const a = Math.random() * Math.PI * 2, r = 0.7 + Math.random() * 0.25; return [Math.cos(a) * r, Math.sin(a) * r, z]; }
-    const a = Math.random() * Math.PI * 2;
-    const tooth = (Math.floor(a / (Math.PI * 2) * teeth * 2) % 2) === 0;
-    const outer = tooth ? 3.0 : 2.55, r = 1.9 + Math.random() * (outer - 1.9);
-    return [Math.cos(a) * r, Math.sin(a) * r, z];
-  },
-  phone(i) {
-    const w = 1.55, h = 3.1, z = rnd(0.12);
-    const k = i % 4;
-    if (k === 0) { // rounded outline
-      const t = Math.random() * 2 * (w + h) * 2, per = 2 * (w + h);
-      let x, y; const u = (t % per);
-      if (u < 2 * w) { x = -w + u; y = h; } else if (u < 2 * w + 2 * h) { x = w; y = h - (u - 2 * w); }
-      else if (u < 4 * w + 2 * h) { x = w - (u - 2 * w - 2 * h); y = -h; } else { x = -w; y = -h + (u - 4 * w - 2 * h); }
-      return [x + rnd(0.03), y + rnd(0.03), z];
+    const teeth = 16, rOut = 2.75, rRoot = 2.35, z = rnd(0.22), k = i % 10;
+    if (k < 5) { // tooth profile along the perimeter
+      const a = Math.random() * TAU, ph = (a / TAU * teeth) % 1;
+      const r = ph < 0.18 ? rRoot + (rOut - rRoot) * ph / 0.18 : ph < 0.5 ? rOut : ph < 0.68 ? rOut - (rOut - rRoot) * (ph - 0.5) / 0.18 : rRoot;
+      return [Math.cos(a) * r, Math.sin(a) * r, z];
     }
-    if (k === 1) { const r = Math.random() * 0.22, a = Math.random() * 6.283; return [Math.cos(a) * r, -h + 0.45 + Math.sin(a) * r, z]; }
-    // screen content: rows of "cards"
-    const row = Math.floor(Math.random() * 6), y = h - 0.55 - row * 0.85 - Math.random() * 0.5;
-    return [rnd(w - 0.3), y, z];
+    if (k < 7) { const a = Math.random() * TAU, r = 1.85 + rnd(0.04); return [Math.cos(a) * r, Math.sin(a) * r, z]; } // inner rim
+    if (k < 9) { const s = Math.floor(Math.random() * 6) * TAU / 6, r = 0.55 + Math.random() * 1.3; return [Math.cos(s) * r + rnd(0.05), Math.sin(s) * r + rnd(0.05), z]; } // spokes
+    const a = Math.random() * TAU, r = 0.35 + Math.random() * 0.2; return [Math.cos(a) * r, Math.sin(a) * r, z]; // hub
   },
-  brain(i) {
-    // Neural net: nodes on a noisy sphere plus links between neighbours.
-    const layers = 5, perLayer = 8, L = i % layers, n = Math.floor(i / layers) % perLayer;
-    const node = (l, m) => [(l - 2) * 1.6, ((m + 0.5) / perLayer - 0.5) * 2.8 * (1 - Math.abs(l - 2) * 0.15), Math.sin(l * 1.7 + m) * 0.4];
-    if (i % 2 === 0) { const p = node(L, n), r = 0.09 * Math.cbrt(Math.random()), a = Math.random() * 6.283, b = Math.acos(rnd(1));
-      return [p[0] + r * Math.sin(b) * Math.cos(a), p[1] + r * Math.sin(b) * Math.sin(a), p[2] + r * Math.cos(b)]; }
-    if (L === layers - 1) { const p = node(L, n); return [p[0] + rnd(0.09), p[1] + rnd(0.09), p[2] + rnd(0.09)]; }
-    const a = node(L, n), b = node(L + 1, Math.floor(Math.random() * perLayer)), t = Math.random();
-    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  // Three stacked app windows: rounded frame, title bar with dots, content rows.
+  windows(i) {
+    const w = 2.3, h = 1.5, layer = i % 3, off = [[-0.9, 0.75, -0.9], [0, 0, 0], [0.9, -0.75, 0.9]][layer];
+    const k = Math.floor(i / 3) % 10, P = (x, y) => [x + off[0], y + off[1], off[2] + rnd(0.02)];
+    if (k < 5) { // frame
+      const t = Math.random() * 2 * (w + h) * 2, per = 2 * (w + h), u = t % per;
+      let x, y; if (u < 2 * w) { x = -w + u; y = h; } else if (u < 2 * w + 2 * h) { x = w; y = h - (u - 2 * w); } else if (u < 4 * w + 2 * h) { x = w - (u - 2 * w - 2 * h); y = -h; } else { x = -w; y = -h + (u - 4 * w - 2 * h); }
+      return P(x, y);
+    }
+    if (k === 5) return P(-w + Math.random() * 2 * w, h - 0.38); // title bar line
+    if (k === 6) { const d = Math.floor(Math.random() * 3), a = Math.random() * TAU; return P(-w + 0.25 + d * 0.22 + Math.cos(a) * 0.06, h - 0.19 + Math.sin(a) * 0.06); }
+    const row = Math.floor(Math.random() * 4); return P(-w + 0.3 + Math.random() * (row === 0 ? 1.6 : 3.4), h - 0.75 - row * 0.45); // content rows
   },
+  // Neural sphere: nodes on a Fibonacci sphere joined by arcs to their nearest neighbours.
+  neural(i) {
+    const n = 72, node = j => { const y = 1 - 2 * (j + 0.5) / n, r = Math.sqrt(1 - y * y), a = j * 2.39996; return [Math.cos(a) * r * 2.2, y * 2.2, Math.sin(a) * r * 2.2]; };
+    const j = i % n;
+    if (i % 3 === 0) { const p = node(j); return [p[0] + rnd(0.07), p[1] + rnd(0.07), p[2] + rnd(0.07)]; }
+    const q = node((j + [1, 8, 13, 21][i % 4]) % n), p = node(j), t = Math.random();
+    const m = [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t], l = Math.hypot(...m) || 1;
+    return m.map(v => v / l * 2.2 * (1 + 0.06 * Math.sin(t * Math.PI))); // arc bulges slightly outward
+  },
+  // Globe lattice + three tilted orbits with satellites.
   globe(i) {
-    if (i % 4 === 0) { const a = Math.random() * 6.283, r = 3.4 + rnd(0.05), tilt = (i % 8 === 0) ? 0.5 : -0.4;
+    const R = 2;
+    if (i % 4 === 0) { const o = i % 3, a = Math.random() * TAU, r = 2.9 + o * 0.35, tilt = [0.45, -0.6, 1.2][o];
+      if (i % 40 === 0) { const sa = o * 2.1; return [Math.cos(sa) * r + rnd(0.08), Math.sin(sa) * r * Math.sin(tilt) + rnd(0.08), Math.sin(sa) * r * Math.cos(tilt) + rnd(0.08)]; }
       return [Math.cos(a) * r, Math.sin(a) * r * Math.sin(tilt), Math.sin(a) * r * Math.cos(tilt)]; }
-    // latitude / longitude lines
-    const lines = 12, onLat = i % 2, k = Math.floor(Math.random() * lines), t = Math.random() * 6.283, R = 2.3;
-    if (onLat) { const phi = ((k + 0.5) / lines) * Math.PI; return [Math.sin(phi) * Math.cos(t) * R, Math.cos(phi) * R, Math.sin(phi) * Math.sin(t) * R]; }
+    const lines = 10, k = Math.floor(Math.random() * lines), t = Math.random() * TAU;
+    if (i % 2) { const ph = ((k + 0.5) / lines) * Math.PI; return [Math.sin(ph) * Math.cos(t) * R, Math.cos(ph) * R, Math.sin(ph) * Math.sin(t) * R]; }
     const th = (k / lines) * Math.PI; return [Math.sin(t) * Math.cos(th) * R, Math.cos(t) * R, Math.sin(t) * Math.sin(th) * R];
   },
-  helix(i) {
-    // DNA double helix: two strands plus base-pair rungs.
-    const t = Math.random(), y = (t - 0.5) * 6.5, a = t * Math.PI * 6, R = 1.3;
-    if (i % 3 === 2) { const u = Math.round(t * 40) / 40, yy = (u - 0.5) * 6.5, aa = u * Math.PI * 6, k = rnd(1);
-      return [Math.cos(aa) * R * k, yy + rnd(0.02), Math.sin(aa) * R * k]; }
-    const s = i % 3 ? Math.PI : 0;
-    return [Math.cos(a + s) * R + rnd(0.08), y + rnd(0.08), Math.sin(a + s) * R + rnd(0.08)];
+  // (2,3) torus knot drawn as a thin tube.
+  knot(i) {
+    const t = Math.random() * TAU, p = 2, q = 3, r = Math.cos(q * t) + 2.2, tube = 0.16 * Math.sqrt(Math.random()), b = Math.random() * TAU;
+    const c = [r * Math.cos(p * t), r * Math.sin(p * t), -Math.sin(q * t)];
+    return [c[0] + Math.cos(b) * tube, c[1] + Math.sin(b) * tube, c[2] + Math.cos(b + 1) * tube].map(v => v * 0.95);
   },
+  // Portal: crisp ring plus a vortex spiralling into the centre (behind the heading).
   portal(i) {
-    // Thick ring with a swirl of particles flowing inward.
-    if (i % 4 === 0) { const a = Math.random() * 6.283, r = Math.random() * 4.6; return [Math.cos(a + r) * r, Math.sin(a + r) * r * 0.62, rnd(0.3) - 1.5]; }
-    const a = Math.random() * 6.283, tube = Math.random() * 6.283, tr = 0.25 * Math.sqrt(Math.random());
-    const R = 5.2 + Math.cos(tube) * tr;
-    return [Math.cos(a) * R, Math.sin(a) * R * 0.62, Math.sin(tube) * tr - 1.5];
-  },
-  cubes(i) {
-    const g = 4, c = i % (g * g * g), cx = c % g, cy = Math.floor(c / g) % g, cz = Math.floor(c / g / g);
-    const s = 0.28, e = Math.floor(Math.random() * 12), t = rnd(s);
-    const edges = [[t, s, s], [t, -s, s], [t, s, -s], [t, -s, -s], [s, t, s], [-s, t, s], [s, t, -s], [-s, t, -s], [s, s, t], [-s, s, t], [s, -s, t], [-s, -s, t]];
-    const p = edges[e];
-    return [(cx - 1.5) * 1.1 + p[0], (cy - 1.5) * 1.1 + p[1], (cz - 1.5) * 1.1 + p[2]];
+    if (i % 3 === 0) { const a = Math.random() * TAU, u = Math.random(), r = 0.3 + u * 4.8, sw = a + u * 5; return [Math.cos(sw) * r, Math.sin(sw) * r * 0.6, -1.6 - u * 0.6]; }
+    const a = Math.random() * TAU, tube = Math.random() * TAU, tr = 0.12 * Math.sqrt(Math.random()), R = 5.2 + Math.cos(tube) * tr;
+    return [Math.cos(a) * R, Math.sin(a) * R * 0.6, Math.sin(tube) * tr - 1.5];
   },
 };
 
@@ -96,10 +103,10 @@ function scene3d() {
     top: fromGen(SHAPES.galaxy),
     about: fromGen(SHAPES.helix),
     work: fromGen(SHAPES.gear),
-    projects: scale(fromGen(SHAPES.phone), 0.72),
-    ai: scale(fromGen(SHAPES.brain), 0.58),
+    projects: scale(fromGen(SHAPES.windows), 0.85),
+    ai: scale(fromGen(SHAPES.neural), 0.42),
     eco: fromGen(SHAPES.globe),
-    skills: fromGen(SHAPES.cubes),
+    skills: fromGen(SHAPES.knot),
     contact: fromGen(SHAPES.portal),
   };
 
@@ -166,7 +173,8 @@ function scene3d() {
 
   // Faint background dust.
   const dn = 1500, dp = new Float32Array(dn * 3);
-  for (let i = 0; i < dn * 3; i++) dp[i] = rnd(25);
+  // Keep dust well behind the camera's near range: points close to the lens render as big squares.
+  for (let i = 0; i < dn; i++) dp.set([rnd(25), rnd(16), -24 + Math.random() * 26], i * 3);
   const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dp, 3));
   const dust = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0x8b90a5, size: 0.03, transparent: true, opacity: 0.5 }));
   scene.add(dust);
@@ -214,7 +222,7 @@ function scene3d() {
     mat.uniforms.uAspect.value = camera.aspect;
 
     // Text shapes face the camera; others spin slowly.
-    const flat = ['work', 'projects', 'ai', 'contact'].includes(current);
+    const flat = ['work', 'projects', 'contact'].includes(current);
     const ry = flat ? target.x * 0.35 : t * 0.12 + target.x * 0.6;
     group.rotation.y += (ry - group.rotation.y) * 0.05;
     // Only the gear spins in-plane; other shapes stay upright.
@@ -246,39 +254,48 @@ try { scene3d(); } catch (e) { console.warn('WebGL unavailable', e); }
   }
 })();
 
-/* ---------- Render projects / ecosystem / skills ---------- */
+/* ---------- Render projects / ecosystem / skills (language-aware) ---------- */
+let lang = initialLang();
 const cats = ['All', ...new Set(projects.map(p => p.cat))];
 $('#filters').innerHTML = cats.map((c, i) => `<button class="${i ? '' : 'active'}" data-c="${c}">${c}</button>`).join('');
-$('#projectGrid').innerHTML = projects.map(p => `
-  <article class="project tilt reveal" data-c="${p.cat}">
-    ${p.private ? '<span class="badge-private">internal</span>' : ''}
-    <div class="icon">${p.icon}</div>
-    <h3>${p.title}</h3>
-    <p>${p.desc}</p>
-    <div class="tags">${p.tags.map(t => `<span>${t}</span>`).join('')}</div>
-    ${p.repoUrl || p.live ? `<div class="links">${p.repoUrl ? `<a href="${p.repoUrl}" target="_blank" rel="noopener">code ↗</a>` : ''}${p.live ? `<a href="${p.live}" target="_blank" rel="noopener">live ↗</a>` : ''}</div>` : ''}
-  </article>`).join('');
 $('#filters').addEventListener('click', e => {
   const c = e.target.dataset.c; if (!c) return;
   document.querySelectorAll('#filters button').forEach(b => b.classList.toggle('active', b === e.target));
   document.querySelectorAll('.project').forEach(p => p.classList.toggle('hidden', c !== 'All' && p.dataset.c !== c));
 });
 
-$('#eco').innerHTML = subdomains.map(s => `
-  <a class="sub tilt reveal" href="${s.url}" ${s.sub ? 'target="_blank" rel="noopener"' : ''}>
+function renderContent(first) {
+  const t = o => (lang === 'en' && o.desc_en) || o.desc;
+  const shown = first ? '' : ' in'; // re-renders skip the scroll-reveal animation
+  const active = $('#filters .active')?.dataset.c || 'All';
+  $('#projectGrid').innerHTML = projects.map(p => `
+  <article class="project tilt reveal${shown}${active !== 'All' && p.cat !== active ? ' hidden' : ''}" data-c="${p.cat}">
+    ${p.private ? '<span class="badge-private">internal</span>' : ''}
+    <div class="icon">${p.icon}</div>
+    <h3>${p.title}</h3>
+    <p>${t(p)}</p>
+    <div class="tags">${p.tags.map(x => `<span>${x}</span>`).join('')}</div>
+    ${p.repoUrl || p.live ? `<div class="links">${p.repoUrl ? `<a href="${p.repoUrl}" target="_blank" rel="noopener">code ↗</a>` : ''}${p.live ? `<a href="${p.live}" target="_blank" rel="noopener">live ↗</a>` : ''}</div>` : ''}
+  </article>`).join('');
+  $('#eco').innerHTML = subdomains.map(s => `
+  <a class="sub tilt reveal${shown}" href="${s.url}" ${s.sub ? 'target="_blank" rel="noopener"' : ''}>
     <div class="host">${s.sub ? `<b>${s.sub}</b>.` : ''}efrino.web.id</div>
     <h3 style="font-size:18px;margin-bottom:4px">${s.name}</h3>
-    <p>${s.desc}</p>
+    <p>${t(s)}</p>
     <div class="ping"><i></i>live</div>
   </a>`).join('');
+  $('#chatMount').innerHTML = chatMarkup(lang);
+  mountChat($('#chatMount'), lang);
+}
+applyStatic(lang);
+renderContent(true);
 
 $('#skillGrid').innerHTML = Object.entries(skills).map(([k, v]) => `
   <div class="skill-group tilt reveal"><h4>${k}</h4><div class="tags">${v.map(t => `<span>${t}</span>`).join('')}</div></div>`).join('');
 const words = Object.values(skills).flat();
 $('#marquee').innerHTML = [...words, ...words].map(w => `<span>${w}</span>`).join('');
 
-$('#chatMount').innerHTML = chatMarkup;
-mountChat($('#chatMount'));
+$('#lang').addEventListener('click', () => { lang = lang === 'en' ? 'id' : 'en'; applyStatic(lang); renderContent(false); });
 $('#yr').textContent = new Date().getFullYear();
 
 /* ---------- Scroll reveal + counters + nav highlight ---------- */

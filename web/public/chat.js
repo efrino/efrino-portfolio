@@ -1,13 +1,19 @@
-// AI playground widget, shared by index.html and playground.html.
-const SUGGEST = {
-  recruiter: ['Siapa Efrino dan apa keahliannya?', 'What is the PPIC Smart Planner?', 'Pengalaman mobile development-nya?', 'Why should we hire him?'],
-  code: ['Jelaskan: const x = arr.reduce((a,b)=>a+b,0)', 'Review: SELECT * FROM users WHERE id = ' + "'\" + id + \"'"],
-  free: ['Buat ide nama startup logistik', 'Explain SSE vs WebSocket in 3 bullets'],
-};
-const GREET = {
-  recruiter: 'Halo! 👋 Saya **Efrino AI**, dengan jawaban yang di-grounding ke CV Efrino. Tanyakan apa saja tentang pengalaman, proyek, atau skill-nya.',
-  code: 'Mode **Code Explainer**. Tempel potongan kode, saya jelaskan & review.',
-  free: 'Mode **Free Chat**. Tanya apa saja.',
+// AI playground widget, shared by index.html and playground.html. Bilingual (id/en).
+const T = {
+  id: {
+    suggest: { recruiter: ['Siapa Efrino dan apa keahliannya?', 'Apa itu PPIC Smart Planner?', 'Pengalaman mobile development-nya?', 'Produk SaaS apa yang dia bangun?'],
+      code: ['Jelaskan: const x = arr.reduce((a,b)=>a+b,0)', 'Review: SELECT * FROM users WHERE id = ' + "'\" + id + \"'"], free: ['Buat ide nama startup logistik', 'Bedanya SSE dan WebSocket dalam 3 poin'] },
+    greet: { recruiter: 'Halo! 👋 Saya **Efrino AI**, dengan jawaban yang di-grounding ke CV Efrino. Tanyakan apa saja tentang pengalaman, proyek, atau skill-nya.',
+      code: 'Mode **Code Explainer**. Tempel potongan kode, saya jelaskan & review.', free: 'Mode **Free Chat**. Tanya apa saja.' },
+    modes: ['🎯 Tanya tentang Efrino', '🧑‍💻 Code Explainer', '💬 Free Chat'], placeholder: 'Tulis pertanyaan… (Enter untuk kirim)', send: 'Kirim', kb: 'mode knowledge-base', checking: 'memeriksa…',
+  },
+  en: {
+    suggest: { recruiter: ['Who is Efrino and what does he do best?', 'What is the PPIC Smart Planner?', 'What SaaS products has he built?', 'Why should we hire him?'],
+      code: ['Explain: const x = arr.reduce((a,b)=>a+b,0)', 'Review: SELECT * FROM users WHERE id = ' + "'\" + id + \"'"], free: ['Name ideas for a logistics startup', 'SSE vs WebSocket in 3 bullets'] },
+    greet: { recruiter: "Hi! 👋 I'm **Efrino AI**: my answers are grounded in Efrino's CV. Ask me anything about his experience, projects or skills.",
+      code: '**Code Explainer** mode. Paste a snippet and I will explain and review it.', free: '**Free Chat** mode. Ask me anything.' },
+    modes: ['🎯 Ask about Efrino', '🧑‍💻 Code Explainer', '💬 Free Chat'], placeholder: 'Type a question… (Enter to send)', send: 'Send', kb: 'knowledge-base mode', checking: 'checking…',
+  },
 };
 
 function esc(s) { return s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
@@ -18,7 +24,8 @@ function md(s) {
     .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
 }
 
-export function mountChat(root) {
+export function mountChat(root, lang = 'id') {
+  const L = T[lang] || T.id;
   const log = root.querySelector('.log'), form = root.querySelector('form'), input = root.querySelector('textarea');
   const sendBtn = root.querySelector('.send'), suggest = root.querySelector('.suggest'), status = root.querySelector('.model-status');
   let mode = 'recruiter', history = [], busy = false;
@@ -33,9 +40,9 @@ export function mountChat(root) {
   };
   const reset = () => {
     history = []; log.innerHTML = '';
-    add('bot', md(GREET[mode]));
+    add('bot', md(L.greet[mode]));
     suggest.innerHTML = '';
-    SUGGEST[mode].forEach(q => {
+    L.suggest[mode].forEach(q => {
       const b = document.createElement('button'); b.type = 'button'; b.textContent = q;
       b.onclick = () => { input.value = q; form.requestSubmit(); };
       suggest.appendChild(b);
@@ -52,8 +59,8 @@ export function mountChat(root) {
     try {
       const j = await (await fetch('/api/health')).json();
       status.classList.add('ready');
-      status.querySelector('span').textContent = j.ready ? `${j.model} · online` : 'knowledge-base mode';
-    } catch { status.querySelector('span').textContent = 'knowledge-base mode'; }
+      status.querySelector('span').textContent = j.ready ? `${j.model} · online` : L.kb;
+    } catch { status.querySelector('span').textContent = L.kb; }
   };
   checkHealth();
 
@@ -99,17 +106,17 @@ export function mountChat(root) {
   reset();
 }
 
-export const chatMarkup = `
+export const chatMarkup = (lang = 'id') => { const L = T[lang] || T.id; return `
 <div class="chat">
   <div class="chat-head">
     <div class="modes">
-      <button class="active" data-mode="recruiter">🎯 Ask about Efrino</button>
-      <button data-mode="code">🧑‍💻 Code Explainer</button>
-      <button data-mode="free">💬 Free Chat</button>
+      <button class="active" data-mode="recruiter">${L.modes[0]}</button>
+      <button data-mode="code">${L.modes[1]}</button>
+      <button data-mode="free">${L.modes[2]}</button>
     </div>
-    <div class="model-status"><i></i><span>checking…</span></div>
+    <div class="model-status"><i></i><span>${L.checking}</span></div>
   </div>
   <div class="log"></div>
   <div class="suggest"></div>
-  <form><textarea placeholder="Tulis pertanyaan… (Enter untuk kirim)" maxlength="3000"></textarea><button class="send" aria-label="Kirim">↑</button></form>
-</div>`;
+  <form><textarea placeholder="${L.placeholder}" maxlength="3000"></textarea><button class="send" aria-label="${L.send}">↑</button></form>
+</div>`; };

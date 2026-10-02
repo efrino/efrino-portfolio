@@ -29,7 +29,8 @@
 <script type="module">
   import { mountChat, chatMarkup } from './chat.js';
   const m = document.getElementById('chatMount');
-  m.innerHTML = chatMarkup; mountChat(m);
+  const lang = (() => { const q = new URLSearchParams(location.search).get('lang'); if (q) return q; try { const s = localStorage.getItem('lang'); if (s) return s; } catch {} return (navigator.languages || [navigator.language]).some(l => /^id|^ms/i.test(l)) ? 'id' : 'en'; })();
+  document.documentElement.lang = lang; m.innerHTML = chatMarkup(lang); mountChat(m, lang);
 </script>
 </body>
 </html>
