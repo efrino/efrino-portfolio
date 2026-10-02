@@ -50,6 +50,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (p === 'profile' && req.method === 'GET') return json(res, 200, profile());
       if (p === 'profile' && req.method === 'PUT') { const b = await body(req); setSetting('profile', { about: String(b.about || '').slice(0, 8000), include: String(b.include || ''), exclude: String(b.exclude || ''), wants: String(b.wants || '').slice(0, 1000), minScore: Math.max(0, Math.min(100, Number(b.minScore) || 60)) }); return json(res, 200, { ok: true }); }
+      if (p === 'digest' && req.method === 'POST') { const ok = await digest({ force: true }); return json(res, ok ? 200 : 400, ok ? { ok } : { error: 'Telegram belum diatur (token/chat id) atau belum ada peluang.' }); }
       if (p === 'run' && req.method === 'POST') { runAll().then(r => console.log('[run] manual', r)).catch(e => console.error(e)); return json(res, 202, { ok: true }); }
       if (p === 'manual' && req.method === 'POST') { const b = await body(req); if (String(b.text || '').trim().length < 40) return json(res, 400, { error: 'Tempel teks lowongan/proyek (min. 40 karakter).' }); return json(res, 201, parse(await addManual(String(b.text), String(b.url || '')))); }
       const m = p.match(/^items\/(\d+)(?:\/(draft|status|rescore))?$/);

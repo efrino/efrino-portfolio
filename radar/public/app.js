@@ -21,7 +21,7 @@ function login() {
 async function main() {
   const s = await api('stats');
   $('#root').innerHTML = `<div class="wrap">
-    <div class="top"><div class="logo">efrino<b>.</b>radar</div><div class="actions"><button class="btn" id="paste">＋ Tempel lowongan/proyek</button><button class="btn" id="prof">⚙️ Profil</button><button class="btn" id="run">⟳ Cari sekarang</button></div></div>
+    <div class="top"><div class="logo">efrino<b>.</b>radar</div><div class="actions"><button class="btn" id="paste">＋ Tempel lowongan/proyek</button><button class="btn" id="prof">⚙️ Profil</button><button class="btn" id="tg">📲 Kirim ringkasan</button><button class="btn" id="run">⟳ Cari sekarang</button></div></div>
     <div class="stats"><div class="stat"><b>${s.good}</b><span>Peluang cocok baru</span></div><div class="stat"><b>${s.shortlist}</b><span>Shortlist</span></div><div class="stat"><b>${s.sent}</b><span>Terkirim</span></div>
       <div class="stat"><b>${s.total}</b><span>Dipantau (${s.unscored} antre dinilai)</span></div><div class="stat"><b style="font-size:15px">${s.lastRun ? new Date(s.lastRun).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '–'}</b><span>Pencarian terakhir</span></div></div>
     <div id="panel"></div>
@@ -29,6 +29,7 @@ async function main() {
     <div class="list" id="list"></div>
     <p class="src" style="margin-top:18px">Sumber: ${Object.values(SRC).slice(0, 6).join(', ')} (API/RSS publik) · lowongan dari situs lain cukup ditempel. Radar tidak pernah mengirim apa pun atas nama Anda.</p></div>`;
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { tab = +b.dataset.i; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b)); list(); });
+  $('#tg').onclick = async () => { try { await api('digest', { method: 'POST' }); toast('Ringkasan terkirim ke Telegram'); } catch (e) { toast(e.message); } };
   $('#run').onclick = async e => { e.target.disabled = true; await api('run', { method: 'POST' }); toast('Mencari di latar belakang… muat ulang beberapa menit lagi'); };
   $('#paste').onclick = () => { $('#panel').innerHTML = `<form class="card" id="mf"><b>Tempel lowongan atau permintaan proyek</b><p style="color:var(--muted);font-size:14px">Dari LinkedIn, Glints, JobStreet, Projects.co.id, grup WhatsApp/Facebook, dsb. Radar menilai & menyiapkan draft.</p>
       <input class="in" name="url" placeholder="Link (opsional)"><textarea name="text" rows="8" placeholder="Tempel seluruh isi lowongan di sini…"></textarea><div class="actions"><button class="btn primary">Nilai & simpan</button><button type="button" class="btn" id="cx">Batal</button></div></form>`;
