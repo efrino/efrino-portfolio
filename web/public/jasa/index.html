@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jasa Excel ke Aplikasi Web · Efrino</title>
+<meta name="description" content="Ubah proses bisnis berbasis Excel (produksi, stok, laporan) menjadi aplikasi web dengan login, dashboard, dan otomatisasi. Dikerjakan oleh engineer berpengalaman sistem PPIC pabrik.">
+<meta property="og:title" content="Excel Anda sudah terlalu besar? Jadikan aplikasi web.">
+<meta property="og:description" content="Jasa digitalisasi proses Excel menjadi aplikasi web: dashboard real-time, multi-user, approval, dan otomatisasi rumus. Coba demo dengan file Anda sendiri.">
+<meta property="og:url" content="https://jasa.efrino.web.id">
+<meta name="theme-color" content="#07080d">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/jasa.css">
+</head>
+<body>
+<header class="j-nav">
+  <a class="brand" href="/">efrino<span class="grad">.</span>jasa</a>
+  <nav><a class="hide-m" href="#kasus">Studi kasus</a><a class="hide-m" href="#paket">Paket</a><a href="/demo">Demo</a><a class="btn primary sm" href="#konsultasi">Konsultasi gratis</a></nav>
+</header>
+
+<main>
+  <section class="hero2" style="max-width:1160px;margin:0 auto">
+    <div>
+      <div class="status"><i></i> Menerima proyek baru · Jabodetabek & remote</div>
+      <h1>Excel Anda sudah <span class="grad">terlalu besar</span> untuk Excel.</h1>
+      <p class="lead">File yang lambat dibuka, rumus yang hanya dipahami satu orang, dan laporan yang harus disalin manual tiap pagi. Saya ubah semua itu menjadi aplikasi web yang bisa dipakai banyak orang sekaligus, dengan dashboard yang langsung terbarui.</p>
+      <div class="cta"><a class="btn primary" href="/demo">⚡ Coba dengan Excel Anda (10 detik)</a><a class="btn" href="#konsultasi">Konsultasi gratis</a></div>
+      <p class="fine">Pengalaman membangun sistem perencanaan produksi (PPIC), gudang & inventory yang dipakai harian di pabrik manufaktur.</p>
+    </div>
+    <div class="ba" aria-hidden="true">
+      <div class="sheet"><div class="bar">PLANNING_FINAL_v7_revisi(2).xlsx</div>
+        <table><tr><td>Part</td><td>Forecast</td><td>Stok</td><td>Plan Shift 1</td><td>Plan Shift 2</td></tr>
+        <tr><td>BRK-A12</td><td>1.200</td><td>340</td><td>430</td><td>430</td></tr><tr><td>BRK-A13</td><td>860</td><td>120</td><td class="err">#REF!</td><td>370</td></tr>
+        <tr><td>FRM-220</td><td>2.400</td><td>990</td><td>705</td><td>705</td></tr><tr><td>FRM-221</td><td>640</td><td>75</td><td>283</td><td class="err">#VALUE!</td></tr>
+        <tr><td>STY-010</td><td>3.100</td><td>1.410</td><td>845</td><td>845</td></tr><tr><td>STY-011</td><td>1.780</td><td>220</td><td>780</td><td>780</td></tr></table></div>
+      <div class="webapp"><div class="row" style="justify-content:space-between"><b style="font-size:13px">Production Planner</b><span class="live">● live · 08:02</span></div>
+        <div class="k"><div><b>98.4%</b>Achievement</div><div><b>3</b>Delivery risk</div><div><b>1.240</b>Plan hari ini</div></div>
+        <div class="bars"><i style="height:60%"></i><i style="height:85%"></i><i style="height:45%"></i><i style="height:95%"></i><i style="height:70%"></i><i style="height:80%"></i><i style="height:55%"></i></div></div>
+    </div>
+  </section>
+
+  <section style="max-width:1160px;margin:0 auto">
+    <p class="eyebrow">Cocok untuk Anda jika…</p>
+    <h2>Tanda-tanda proses Anda sudah waktunya naik kelas.</h2>
+    <div class="g3">
+      <div class="box"><b class="t">🐢 File makin lambat & sering rusak</b><p>Puluhan sheet, ribuan baris, VLOOKUP berantai. Dibuka bersamaan jadi konflik, dan muncul "versi final_final2".</p></div>
+      <div class="box"><b class="t">🧑‍💼 Tergantung satu orang</b><p>Hanya satu staf yang paham rumusnya. Saat dia cuti atau resign, proses berhenti.</p></div>
+      <div class="box"><b class="t">⏰ Laporan dirangkum manual tiap hari</b><p>Data dari beberapa bagian disalin-tempel ke satu file, baru bisa dilaporkan ke atasan siang harinya.</p></div>
+    </div>
+  </section>
+
+  <section id="kasus" style="max-width:1160px;margin:0 auto">
+    <p class="eyebrow">Studi kasus · Manufaktur otomotif</p>
+    <div class="case">
+      <div>
+        <h2 style="margin-bottom:16px">Perencanaan produksi dari Excel menjadi pipeline otomatis.</h2>
+        <p class="lead" style="font-size:17px">Tim PPIC menyusun rencana produksi harian di Excel dengan menggabungkan data forecast, delivery order, stok, kalender kerja, dan pencapaian shift. Prosesnya memakan waktu berjam-jam dan rawan salah rumus.</p>
+        <ul style="color:var(--muted);margin:18px 0 0 18px;display:grid;gap:8px">
+          <li>Pipeline <b style="color:var(--text)">16 langkah</b> menggabungkan <b style="color:var(--text)">6 sumber data</b> menjadi rencana per part per shift</li>
+          <li>Progress <b style="color:var(--text)">real-time</b> (Server-Sent Events), sehingga planner melihat setiap langkah berjalan</li>
+          <li>CMS parameter & formula: planner mengubah aturan <b style="color:var(--text)">tanpa programmer</b></li>
+          <li>Peringatan otomatis untuk risiko keterlambatan pengiriman</li>
+        </ul>
+        <p class="fine" style="margin-top:14px">Stack: CodeIgniter, Vue 3, MySQL. Detail perusahaan dirahasiakan.</p>
+      </div>
+      <div class="nums">
+        <div><b class="grad">16</b><span>langkah kalkulasi otomatis</span></div>
+        <div><b class="grad">6 → 1</b><span>sumber data menjadi satu rencana</span></div>
+        <div><b class="grad">Live</b><span>progress tiap langkah via SSE</span></div>
+        <div><b class="grad">CMS</b><span>parameter & formula diatur lewat menu</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1160px;margin:0 auto">
+    <p class="eyebrow">Yang bisa dibangun</p>
+    <h2>Dari satu form sederhana sampai sistem lantai produksi.</h2>
+    <div class="g3">
+      <div class="box"><b class="t">📊 Dashboard & laporan</b><p>KPI real-time, grafik, filter per tanggal/bagian, ekspor Excel/PDF otomatis.</p></div>
+      <div class="box"><b class="t">🔐 Multi-user & hak akses</b><p>Login per karyawan, peran admin/supervisor/operator, jejak audit siapa mengubah apa.</p></div>
+      <div class="box"><b class="t">✅ Alur approval</b><p>Pengajuan → persetujuan atasan → notifikasi. Tidak ada lagi tanda tangan di kertas.</p></div>
+      <div class="box"><b class="t">🧮 Otomatisasi rumus</b><p>Logika Excel Anda dipindah ke sistem yang teruji: konsisten, cepat, dan bisa diatur lewat menu.</p></div>
+      <div class="box"><b class="t">📱 Aplikasi lapangan</b><p>Scan barcode/QR, input dari HP atau handheld, cetak label thermal, dan tetap jalan offline.</p></div>
+      <div class="box"><b class="t">🔌 Integrasi</b><p>Sambungkan dengan SAP/ERP, Google Sheets, WhatsApp, atau mesin lewat API.</p></div>
+    </div>
+  </section>
+
+  <section style="max-width:1160px;margin:0 auto">
+    <p class="eyebrow">Proses kerja</p>
+    <h2>Jelas sejak awal, tanpa kejutan biaya.</h2>
+    <div class="steps4">
+      <div class="box"><span>1</span><b class="t">Konsultasi gratis</b><p>Kirim contoh file Excel & ceritakan alurnya. Saya pelajari dan beri gambaran solusi.</p></div>
+      <div class="box"><span>2</span><b class="t">Proposal tetap</b><p>Ruang lingkup, tampilan awal, jadwal, dan harga pasti sebelum mulai.</p></div>
+      <div class="box"><span>3</span><b class="t">Demo tiap minggu</b><p>Anda mencoba progres langsung tiap minggu, sehingga koreksi bisa dilakukan sejak awal.</p></div>
+      <div class="box"><span>4</span><b class="t">Go-live & pendampingan</b><p>Migrasi data lama, pelatihan pengguna, dan garansi perbaikan bug.</p></div>
+    </div>
+  </section>
+
+  <section id="paket" style="max-width:1160px;margin:0 auto">
+    <p class="eyebrow">Paket</p>
+    <h2>Investasi sekali, hemat jam kerja tiap hari.</h2>
+    <div class="g3">
+      <div class="box pkg"><b class="t">Kilat</b><div class="amt">Rp7,5jt<small> mulai</small></div><ul><li>1 modul (form + tabel + dashboard)</li><li>Login & 2 peran pengguna</li><li>Impor data Excel lama</li><li>Selesai ±2 minggu</li><li>Garansi bug 1 bulan</li></ul><a class="btn block" href="#konsultasi">Diskusikan</a></div>
+      <div class="box pkg hot"><span class="tagline">Paling sering dipilih</span><b class="t">Bisnis</b><div class="amt">Rp15–35jt</div><ul><li>3–6 modul terhubung</li><li>Approval, notifikasi, audit log</li><li>Otomatisasi rumus & laporan</li><li>Selesai ±4–6 minggu</li><li>Garansi bug 3 bulan</li></ul><a class="btn primary block" href="#konsultasi">Diskusikan</a></div>
+      <div class="box pkg"><b class="t">Industri</b><div class="amt">Rp50jt<small> mulai</small></div><ul><li>Perencanaan produksi / MRP / gudang</li><li>Integrasi SAP/ERP & handheld</li><li>Real-time & offline-first</li><li>Pendampingan di lokasi</li><li>SLA & maintenance</li></ul><a class="btn block" href="#konsultasi">Diskusikan</a></div>
+    </div>
+    <p class="fine" style="margin-top:14px">Maintenance & hosting opsional mulai Rp750rb/bulan. Harga final sesuai ruang lingkup di proposal.</p>
+  </section>
+
+  <section id="konsultasi" style="max-width:860px;margin:0 auto">
+    <p class="eyebrow">Konsultasi gratis</p>
+    <h2>Ceritakan proses yang ingin Anda rapikan.</h2>
+    <form class="box form-grid" id="lead" novalidate>
+      <label class="f"><span>Nama *</span><input name="name" required maxlength="100" autocomplete="name"></label>
+      <label class="f"><span>Perusahaan / usaha</span><input name="company" maxlength="120" autocomplete="organization"></label>
+      <label class="f"><span>WhatsApp *</span><input name="whatsapp" inputmode="tel" maxlength="30" placeholder="08…" autocomplete="tel"></label>
+      <label class="f"><span>Email</span><input name="email" type="email" maxlength="120" autocomplete="email"></label>
+      <label class="f full"><span>Proses apa yang ingin dijadikan aplikasi? *</span><textarea name="need" rows="5" maxlength="2000" placeholder="Contoh: rekap stok 3 gudang tiap hari masih manual di Excel, perlu dashboard dan input dari HP…"></textarea></label>
+      <label class="f"><span>Perkiraan anggaran</span><select name="budget"><option value="">Belum tahu</option><option>&lt; Rp10jt</option><option>Rp10–35jt</option><option>Rp35–75jt</option><option>&gt; Rp75jt</option></select></label>
+      <label class="hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+      <div class="f" style="align-content:end"><button class="btn primary" style="width:100%">Kirim, saya balas ≤ 1×24 jam</button></div>
+      <p class="fine full">Data Anda hanya dipakai untuk menghubungi Anda terkait konsultasi ini.</p>
+    </form>
+  </section>
+</main>
+<footer class="j-foot">Efrino Wahyu Eko Pambudi · Software Engineer · <a href="https://efrino.web.id">Portfolio</a> · <a href="https://opnamo.efrino.web.id">Opnamo</a> · <a href="mailto:efrinowep@gmail.com">efrinowep@gmail.com</a></footer>
+<div class="toast2" id="toast"></div>
+<script type="module" src="/jasa.js"></script>
+</body>
+</html>

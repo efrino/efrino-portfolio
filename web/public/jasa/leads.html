@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Leads · efrino.jasa</title>
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/jasa.css">
+<style>.wrap{max-width:1100px;margin:0 auto;padding:36px 16px}.lead-card{display:grid;gap:6px}.lead-card .meta{font-family:var(--mono);font-size:12px;color:var(--muted)}.lead-card p{white-space:pre-wrap}</style>
+</head>
+<body>
+<header class="j-nav"><a class="brand" href="/">efrino<span class="grad">.</span>jasa</a><nav><a href="/">Landing</a></nav></header>
+<main class="wrap">
+  <h1 style="font-size:32px;margin-bottom:16px">Leads konsultasi</h1>
+  <form id="auth" class="row" style="gap:8px;margin-bottom:20px"><input id="tok" type="password" placeholder="LEADS_TOKEN" class="f" style="flex:1;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text)"><button class="btn primary sm">Buka</button></form>
+  <div id="list" style="display:grid;gap:12px"></div>
+</main>
+<div class="toast2" id="toast"></div>
+<script type="module" src="/leads.js"></script>
+</body>
+</html>

@@ -24,6 +24,7 @@ export const projects = [
 export const subdomains = [
   { sub: '', name: 'Portfolio (you are here)', desc: 'Halaman utama: 3D, animasi, AI.', url: 'https://efrino.web.id' },
   { sub: 'opnamo', name: 'Opnamo', desc: 'SaaS stok opname: tag QR, scan HP offline, laporan selisih rupiah.', url: 'https://opnamo.efrino.web.id' },
+  { sub: 'jasa', name: 'Jasa Excel → Web', desc: 'Digitalisasi proses Excel jadi aplikasi web. Coba demo dengan file Anda.', url: 'https://jasa.efrino.web.id' },
   { sub: 'tools', name: 'Efrino Tools', desc: 'Background Remover AI, 3D Maker, PDF Merge, Compressor, QR: gratis & tanpa upload.', url: 'https://tools.efrino.web.id' },
   { sub: 'ai', name: 'AI Playground', desc: 'Chat AI layar penuh.', url: 'https://ai.efrino.web.id' },
   { sub: 'shop', name: 'Nayea Store', desc: 'E-commerce modest fashion, React + Supabase.', url: 'https://shop.efrino.web.id' },

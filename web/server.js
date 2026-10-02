@@ -13,6 +13,12 @@ const PROVIDERS = [
 const DOMAIN = process.env.DOMAIN || 'efrino.web.id';
 const PUBLIC = path.join(__dirname, 'public');
 const TOOLS = path.join(PUBLIC, 'tools');
+// Subdomains served from their own folder, falling back to shared assets.
+const SITES = { tools: TOOLS, jasa: path.join(PUBLIC, 'jasa') };
+const crypto = require('crypto');
+const DATA_DIR = process.env.DATA_DIR || '/data';
+const LEADS_FILE = path.join(DATA_DIR, 'leads.jsonl');
+const LEADS_TOKEN = process.env.LEADS_TOKEN || '';
 
 // Subdomains that point to projects hosted elsewhere.
 const REDIRECTS = {
@@ -175,6 +181,36 @@ function health(res) {
   send(res, 200, { ok: true, model: PROVIDERS.map(p => p.name).join(' → ') || 'none', ready: PROVIDERS.length > 0 });
 }
 
+// --- Consultation leads (jasa.efrino.web.id), appended to a JSONL file on a persistent volume.
+const leadHits = new Map();
+async function createLead(req, res) {
+  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  const now = Date.now(), recent = (leadHits.get(ip) || []).filter(t => now - t < 3600e3);
+  if (recent.length >= 5) return send(res, 429, { error: 'Terlalu banyak pengiriman. Coba lagi nanti atau hubungi via WhatsApp.' });
+  let raw = '';
+  for await (const c of req) { raw += c; if (raw.length > 10000) return send(res, 413, { error: 'Data terlalu panjang.' }); }
+  let b; try { b = JSON.parse(raw); } catch { return send(res, 400, { error: 'Data tidak valid.' }); }
+  if (b.website) return send(res, 200, { ok: true }); // honeypot: bots fill hidden fields
+  const s = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+  const lead = { at: new Date().toISOString(), name: s(b.name, 100), company: s(b.company, 120), whatsapp: s(b.whatsapp, 30).replace(/[^\d+]/g, ''),
+    email: s(b.email, 120), need: s(b.need, 2000), budget: s(b.budget, 40), source: s(b.source, 40), ip };
+  if (!lead.name || (!lead.whatsapp && !lead.email) || lead.need.length < 10)
+    return send(res, 400, { error: 'Isi nama, WhatsApp atau email, dan ceritakan kebutuhan Anda (min. 10 karakter).' });
+  try { await fs.promises.mkdir(DATA_DIR, { recursive: true }); await fs.promises.appendFile(LEADS_FILE, JSON.stringify(lead) + '\n'); }
+  catch (e) { console.error('lead write failed', e.message); return send(res, 500, { error: 'Gagal menyimpan. Silakan hubungi via WhatsApp.' }); }
+  recent.push(now); leadHits.set(ip, recent);
+  console.log(`new lead: ${lead.name} / ${lead.company}`);
+  send(res, 201, { ok: true });
+}
+
+async function listLeads(req, res) {
+  const given = String(req.headers['x-leads-token'] || '');
+  const ok = LEADS_TOKEN && given.length === LEADS_TOKEN.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(LEADS_TOKEN));
+  if (!ok) return send(res, 401, { error: 'Token salah.' });
+  let text = ''; try { text = await fs.promises.readFile(LEADS_FILE, 'utf8'); } catch {}
+  send(res, 200, text.split('\n').filter(Boolean).map(l => JSON.parse(l)).reverse());
+}
+
 function serveStatic(req, res, file, roots = [PUBLIC]) {
   // Try each root in order (tools subdomain falls back to shared assets).
   const tryRoot = i => {
@@ -219,12 +255,15 @@ http.createServer((req, res) => {
   if (url.pathname === '/api/chat' && req.method === 'POST') return chat(req, res);
   if (url.pathname === '/api/health') return health(res);
 
+  if (url.pathname === '/api/leads' && req.method === 'POST') return createLead(req, res);
+  if (url.pathname === '/api/leads' && req.method === 'GET') return listLeads(req, res);
+
   let file = decodeURIComponent(url.pathname);
-  if (sub === 'tools') {
+  if (SITES[sub]) {
     if (file === '/' || file.endsWith('/')) file += 'index.html';
     // Pretty URLs: /bg-remover -> /bg-remover.html
     if (!path.extname(file)) file += '.html';
-    return serveStatic(req, res, file, [TOOLS, PUBLIC]);
+    return serveStatic(req, res, file, [SITES[sub], PUBLIC]);
   }
   if (file === '/') file = sub === 'ai' ? '/playground.html' : '/index.html';
   serveStatic(req, res, file);
