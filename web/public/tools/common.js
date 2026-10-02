@@ -7,12 +7,18 @@ export const TOOLS = [
   { slug: 'qr', emoji: '🔳', name: 'QR Generator', desc: 'Buat QR code untuk link, Wi-Fi, atau teks. Warna kustom, logo di tengah, ekspor PNG & SVG.', tag: 'PNG · SVG · Wi-Fi' },
 ];
 
+// Link to the same tool in the other language (English lives under /en/).
+function langSwitch() {
+  const en = document.documentElement.lang === 'en', p = location.pathname.replace(/^\/en(?=\/|$)/, '') || '/';
+  return `<a href="${en ? p : '/en' + (p === '/' ? '/' : p)}" class="lang-sw" title="${en ? 'Bahasa Indonesia' : 'English'}">${en ? '🇮🇩 ID' : '🇬🇧 EN'}</a>`;
+}
+
 export function shell(active) {
   const top = document.createElement('header');
   top.className = 't-top';
   top.innerHTML = `
     <a class="brand" href="/"><span>efrino<span class="grad">.</span>tools</span><small>· free, private, in-browser</small></a>
-    <nav>${active ? '<a href="/">← All tools</a>' : ''}<a href="https://efrino.web.id">Portfolio ↗</a></nav>`;
+    <nav>${active ? '<a href="/">← All tools</a>' : ''}<a href="https://efrino.web.id">Portfolio ↗</a>${langSwitch()}</nav>`;
   document.body.prepend(top);
   const foot = document.createElement('footer');
   foot.className = 't-foot';

@@ -278,7 +278,7 @@ function renderContent(first) {
     ${p.repoUrl || p.live ? `<div class="links">${p.repoUrl ? `<a href="${p.repoUrl}" target="_blank" rel="noopener">code ↗</a>` : ''}${p.live ? `<a href="${p.live}" target="_blank" rel="noopener">live ↗</a>` : ''}</div>` : ''}
   </article>`).join('');
   $('#eco').innerHTML = subdomains.map(s => `
-  <a class="sub tilt reveal${shown}" href="${s.url}" ${s.sub ? 'target="_blank" rel="noopener"' : ''}>
+  <a class="sub tilt reveal${shown}" href="${lang === 'en' && s.sub === 'tools' ? s.url + '/en/' : s.url}" ${s.sub ? 'target="_blank" rel="noopener"' : ''}>
     <div class="host">${s.sub ? `<b>${s.sub}</b>.` : ''}efrino.web.id</div>
     <h3 style="font-size:18px;margin-bottom:4px">${s.name}</h3>
     <p>${t(s)}</p>

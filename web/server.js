@@ -3,6 +3,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { toEnglish, hreflang } = require('./tools-en');
 
 const PORT = process.env.PORT || 3000;
 // AI runs on free-tier hosted APIs (never on this VPS). Providers are tried in order.
@@ -264,6 +265,23 @@ http.createServer((req, res) => {
   if (url.pathname === '/api/leads' && req.method === 'GET') return listLeads(req, res);
 
   let file = decodeURIComponent(url.pathname);
+  // Tools pages (both editions) are rendered: English under /en/ is translated from the Indonesian source.
+  if (sub === 'tools') {
+    const en = file === '/en' || file.startsWith('/en/');
+    let f = en ? file.slice(3) || '/' : file;
+    if (f === '/' || f.endsWith('/')) f += 'index.html';
+    if (!path.extname(f)) f += '.html';
+    const ext = path.extname(f), fp = path.normalize(path.join(TOOLS, f));
+    if (fp.startsWith(TOOLS) && (ext === '.html' || (en && ext === '.js')) && fs.existsSync(fp)) {
+      let body = fs.readFileSync(fp, 'utf8');
+      if (en) body = toEnglish(body);
+      if (ext === '.html') body = hreflang(body, f === '/index.html' ? '' : f.slice(1, -5));
+      const buf = Buffer.from(body), gz = /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+      res.writeHead(200, { 'Content-Type': MIME[ext], 'Cache-Control': 'no-cache', 'Content-Language': en ? 'en' : 'id', Vary: 'Accept-Encoding', ...(gz ? { 'Content-Encoding': 'gzip' } : {}) });
+      return res.end(gz ? zlib.gzipSync(buf) : buf);
+    }
+    if (en) { file = f; } // assets requested under /en/ fall through to the normal files
+  }
   if (SITES[sub]) {
     if (file === '/' || file.endsWith('/')) file += 'index.html';
     // Pretty URLs: /bg-remover -> /bg-remover.html

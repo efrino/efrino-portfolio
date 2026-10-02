@@ -79,3 +79,5 @@ body { min-height: 100vh; background: radial-gradient(1200px 600px at 80% -10%, 
 .seo-more { grid-column: 1 / -1; color: var(--muted); font-size: 14px; }
 .seo-more a { color: var(--accent2); }
 @media (max-width: 900px) { .seo { grid-template-columns: 1fr; } }
+
+.t-top nav .lang-sw { margin-left: 6px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(124,92,255,.45); background: rgba(124,92,255,.12); font-family: var(--mono); font-size: 12.5px; }

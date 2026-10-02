@@ -14,6 +14,8 @@ export function applyStatic(lang) {
     if (el.dataset.orig === undefined) el.dataset.orig = el.innerHTML;
     el.innerHTML = lang === 'en' ? EN[el.dataset.i18n] ?? el.dataset.orig : el.dataset.orig;
   });
+  // English visitors go to the English edition of the tools site.
+  document.querySelectorAll('a[href^="https://tools.efrino.web.id"]').forEach(a => { a.href = lang === 'en' ? 'https://tools.efrino.web.id/en/' : 'https://tools.efrino.web.id'; });
   const b = document.getElementById('lang');
   if (b) { b.textContent = lang === 'en' ? 'ID' : 'EN'; b.title = lang === 'en' ? 'Bahasa Indonesia' : 'English'; }
   try { localStorage.setItem('lang', lang); } catch {}
