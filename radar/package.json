@@ -1,0 +1,1 @@
+{ "name": "efrino-radar", "private": true, "type": "module", "scripts": { "start": "node --no-warnings server.js" }, "engines": { "node": ">=22.13" } }

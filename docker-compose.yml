@@ -15,5 +15,24 @@ services:
       - portfolio-data:/data
     expose: ["3000"]
 
+  # Private job/project radar (radar.efrino.web.id). Reads jasa leads read-only.
+  radar:
+    build:
+      context: .
+      dockerfile: radar/Dockerfile
+    restart: unless-stopped
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - RADAR_PASSWORD=${RADAR_PASSWORD}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - LEADS_FILE=/leads/leads.jsonl
+    volumes:
+      - radar-data:/data
+      - portfolio-data:/leads:ro
+    expose: ["3000"]
+
 volumes:
   portfolio-data: {}
+  radar-data: {}
