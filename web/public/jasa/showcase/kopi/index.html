@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kopi Senja · Diseduh perlahan (Demo landing page sinematik)</title>
+<meta name="description" content="Contoh landing page sinematik: video bergerak mengikuti scroll. Dibuat oleh efrino.jasa.">
+<meta property="og:title" content="Kopi Senja: diseduh perlahan">
+<meta property="og:image" content="https://jasa.efrino.web.id/showcase/kopi/f/060.webp">
+<meta name="theme-color" content="#0e0a07">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="story.css">
+<link rel="preload" as="image" href="f/001.webp" media="(min-width: 861px)">
+<link rel="preload" as="image" href="m/001.webp" media="(max-width: 860px)">
+</head>
+<body>
+<header class="top"><a class="brand" href="#">Kopi <i>Senja</i></a><a class="pill" href="#menu">Menu</a></header>
+
+<section class="story" id="story">
+  <div class="stage">
+    <canvas class="bg" id="bg"></canvas>
+    <div class="frame"><canvas id="cv"></canvas></div>
+    <div class="loader" id="loader"><span id="ld">0%</span></div>
+
+    <div class="beat" data-in="0" data-out="0.14">
+      <p class="kicker">Bekasi · sejak 2019</p>
+      <h1>Diseduh <i>perlahan</i>.<br>Dinikmati sepenuh hati.</h1>
+      <p class="hint">Gulir untuk menuang ↓</p>
+    </div>
+    <div class="beat" data-in="0.2" data-out="0.42">
+      <p class="kicker">01 · Biji pilihan</p>
+      <h2>Arabika Gayo &amp; Java Preanger</h2>
+      <p>Disangrai setiap minggu dalam batch kecil, supaya aromanya masih utuh saat sampai di cangkir Anda.</p>
+    </div>
+    <div class="beat" data-in="0.48" data-out="0.7">
+      <p class="kicker">02 · Ritual</p>
+      <h2>Dituang <i>saat dipesan</i></h2>
+      <p>Tidak ada termos, tidak ada kopi yang menunggu. Setiap cangkir diseduh dan dituang ketika Anda memesannya.</p>
+    </div>
+    <div class="beat" data-in="0.76" data-out="0.98">
+      <p class="kicker">03 · Untuk Anda</p>
+      <h2>Satu cangkir,<br>satu jeda.</h2>
+      <p>Duduk sebentar. Senja datang tiap hari, kopi yang baik tidak selalu.</p>
+    </div>
+    <div class="progress"><i id="bar"></i></div>
+  </div>
+</section>
+
+<section class="menu" id="menu">
+  <p class="kicker">Menu favorit</p>
+  <h2>Pilihan <i>senja</i> ini</h2>
+  <div class="cards">
+    <article><b>Kopi Susu Gula Aren</b><span>Rp18.000</span><p>Espresso, susu segar, gula aren cair. Best seller.</p></article>
+    <article><b>Jebena Tradisional</b><span>Rp25.000</span><p>Kopi seduh ala Etiopia, dituang langsung dari teko tanah liat.</p></article>
+    <article><b>Matcha Latte</b><span>Rp22.000</span><p>Matcha Jepang, susu, sedikit madu.</p></article>
+  </div>
+  <a class="cta" href="#" onclick="return false">Pesan via WhatsApp</a>
+</section>
+
+<footer class="foot">
+  <div class="made"><b>Ini demo, bukan kafe sungguhan.</b> Landing page sinematik seperti ini bisa dibuat untuk produk Anda.
+    <a href="https://jasa.efrino.web.id/#konsultasi">Konsultasi gratis →</a></div>
+  <p class="credit">Video: “Servido tradicional de café etíope” oleh ProtoplasmaKid, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, via <a href="https://commons.wikimedia.org/wiki/File:Servido_tradicional_de_caf%C3%A9_eti%C3%B3pe.webm" target="_blank" rel="noopener">Wikimedia Commons</a>; diwarnai ulang &amp; dipecah menjadi frame. Desain &amp; kode: <a href="https://efrino.web.id">Efrino</a>.</p>
+</footer>
+<script src="story.js"></script>
+</body>
+</html>
