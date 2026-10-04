@@ -61,3 +61,6 @@ textarea:focus, input.in:focus { border-color: var(--accent); }
 .chip { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; border: 1px solid var(--line); margin: 4px 4px 0 0; }
 .chip.ok { border-color: rgba(60,220,140,.5); color: #7ef0b3; } .chip.gap { border-color: rgba(255,170,80,.5); color: #ffc58a; }
 .tips { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
+#tailor, .tailor, .tailor > * { min-width: 0; max-width: 100%; }
+.tailor .btn { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+.tailor .actions select { flex: 1 1 170px; } .tailor #tgo { flex: 1 1 200px; justify-content: center; }
