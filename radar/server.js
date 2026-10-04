@@ -7,7 +7,7 @@ import { runAll, score, draft, addManual, addShared, completeItem, extractFromIm
 import { waStart, waStatus, waLogout, waSend, waBoot } from './wa.js';
 import { ask, history, reset } from './assistant.js';
 import { tailor, recentFiles } from './tailor.js';
-import { fileInfo, filePath, confirmAction, cancelAction, actionToDraft, gmailDraft } from './tools.js';
+import { fileInfo, filePath, fileType, confirmAction, cancelAction, actionToDraft, gmailDraft } from './tools.js';
 
 const PASSWORD = process.env.RADAR_PASSWORD || '';
 // Long random token for the iOS Shortcut (sent as a Bearer header); stored once, shown in the dashboard.
@@ -75,7 +75,7 @@ const server = http.createServer(async (req, res) => {
       if (p === 'files' && req.method === 'GET') return json(res, 200, recentFiles());
       const fm = p.match(/^files\/([0-9a-f-]{36})$/);
       if (fm && req.method === 'GET') { const f = fileInfo(fm[1]); if (!f) return json(res, 404, { error: 'File tidak ada.' });
-        res.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': `${url.searchParams.has('dl') ? 'attachment' : 'inline'}; filename="${f.name.replace(/"/g, '')}"` }); return fs.createReadStream(filePath(f.id)).pipe(res); }
+        res.writeHead(200, { 'content-type': fileType(f.id), 'content-disposition': `${url.searchParams.has('dl') ? 'attachment' : 'inline'}; filename="${f.name.replace(/"/g, '')}"` }); return fs.createReadStream(filePath(f.id)).pipe(res); }
       const am = p.match(/^actions\/([0-9a-f-]{36})\/(confirm|cancel|draft)$/);
       if (am && req.method === 'POST') { try { if (am[2] === 'confirm') return json(res, 200, await confirmAction(am[1])); if (am[2] === 'draft') return json(res, 200, await actionToDraft(am[1])); return json(res, 200, { ok: cancelAction(am[1]) }); } catch (e) { return json(res, 409, { error: e.message }); } }
       if (p === 'assistant' && req.method === 'DELETE') { reset(); return json(res, 200, { ok: true }); }

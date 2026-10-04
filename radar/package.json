@@ -1,3 +1,3 @@
 { "name": "efrino-radar", "private": true, "type": "module",
   "scripts": { "start": "node --no-warnings server.js" }, "engines": { "node": ">=22.13" },
-  "dependencies": { "baileys": "7.0.0-rc14", "imapflow": "^2.2.1", "nodemailer": "^10.0.13", "pdfkit": "^0.20.2", "pino": "^10.3.1", "qrcode": "^1.5.4" } }
+  "dependencies": { "baileys": "7.0.0-rc14", "docx": "^9.5.1", "imapflow": "^2.2.1", "nodemailer": "^10.0.13", "pdfkit": "^0.20.2", "pino": "^10.3.1", "qrcode": "^1.5.4" } }

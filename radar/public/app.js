@@ -191,17 +191,17 @@ function metaHtml(meta) {
 
 // --- CV & cover letter tailored to a job description, saved straight to the phone
 const blobs = new Map(); // url -> File, prefetched so the tap can open the iOS share sheet immediately
-async function prefetch(f) { if (blobs.has(f.url)) return; const r = await fetch(f.url + '?dl=1'); if (r.ok) blobs.set(f.url, new File([await r.blob()], f.name, { type: 'application/pdf' })); }
+async function prefetch(f) { if (blobs.has(f.url)) return; const r = await fetch(f.url + '?dl=1'); if (r.ok) blobs.set(f.url, new File([await r.blob()], f.name, { type: r.headers.get('content-type') || 'application/pdf' })); }
 async function savePdf(f) {
   const file = blobs.get(f.url);
   if (file && navigator.canShare?.({ files: [file] }) && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { await navigator.share({ files: [file], title: f.name }); return; } catch (e) { if (e.name === 'AbortError') return; } }
   const a = document.createElement('a'); a.href = file ? URL.createObjectURL(file) : f.url + '?dl=1'; a.download = f.name; document.body.append(a); a.click(); a.remove();
 }
-const dlBtns = (files, primary) => files.map((f, i) => `<button type="button" class="btn ${primary && i === 0 ? 'primary' : ''} dl" data-url="${esc(f.url)}" data-name="${esc(f.name)}">⬇️ ${esc(f.name)}</button>`).join('');
+const dlBtns = (files, primary) => files.map((f, i) => `<button type="button" class="btn ${primary && i === 0 ? 'primary' : ''} dl" data-url="${esc(f.url)}" data-name="${esc(f.name)}">${/\.docx$/i.test(f.name) ? '📝' : '⬇️'} ${esc(f.name)}</button>`).join('');
 function bindDl(root) { root.querySelectorAll('.dl').forEach(b => { const f = { url: b.dataset.url, name: b.dataset.name }; prefetch(f).catch(() => {}); b.onclick = () => savePdf(f); }); }
 async function tailorCard(el) {
   const opts = [...await api('items?track=all&status=shortlist').catch(() => []), ...await api('items?track=career&status=new').catch(() => [])].slice(0, 25);
-  el.innerHTML = `<form class="card tailor" id="tf"><div><b style="font-size:17px">🎯 CV & Cover Letter sesuai lowongan</b><p class="sub">Tempel job description (atau pilih dari Radar). AI menyusun ulang CV & surat lamaran dari profil Anda tanpa mengarang fakta, lalu PDF langsung bisa disimpan ke HP.</p></div>
+  el.innerHTML = `<form class="card tailor" id="tf"><div><b style="font-size:17px">🎯 CV & Cover Letter sesuai lowongan</b><p class="sub">Tempel job description (atau pilih dari Radar). AI menyusun ulang CV & surat lamaran dari profil Anda tanpa mengarang fakta, lalu PDF & Word langsung bisa disimpan ke HP.</p></div>
     <select name="item"><option value="">Pilih peluang dari Radar (opsional)</option>${opts.map(i => `<option value="${i.id}">${esc(`[${i.score ?? '?'}] ${i.title} · ${i.company || '-'}`).slice(0, 90)}</option>`).join('')}</select>
     <textarea name="jd" rows="5" placeholder="Tempel job description di sini… (dari LinkedIn: buka lowongan → salin teks 'About the job')"></textarea>
     <div class="actions"><select name="lang" style="width:auto"><option value="auto">Bahasa: ikuti lowongan</option><option value="id">Bahasa Indonesia</option><option value="en">English</option></select>
@@ -217,6 +217,7 @@ async function tailorCard(el) {
       const r = await api('tailor', { method: 'POST', body: { jd: f.jd.value, itemId: f.item.value || null, lang: f.lang.value } });
       out.innerHTML = `<div class="tres"><div class="tscore"><b>${r.match}%</b><span>cocok · ${esc(r.role || '')}${r.company ? ' @ ' + esc(r.company) : ''}</span></div>
         <div class="actions big">${dlBtns(r.files, true)}</div>
+        ${r.docx?.length ? `<div><span class="sub">Versi Word (.docx), bisa diedit</span><div class="actions" style="margin-top:6px">${dlBtns(r.docx)}</div></div>` : ''}
         <p class="sub">Di iPhone: tekan tombol → <b>Simpan ke File</b> (atau kirim ke WhatsApp/Email).</p>
         ${r.keywords_hit.length ? `<div><span class="sub">Kata kunci terpenuhi</span><div class="chips">${r.keywords_hit.map(k => `<span class="chip ok">${esc(k)}</span>`).join('')}</div></div>` : ''}
         ${r.gaps.length ? `<div><span class="sub">Belum terlihat di profil (tidak dimasukkan ke CV)</span><div class="chips">${r.gaps.map(k => `<span class="chip gap">${esc(k)}</span>`).join('')}</div></div>` : ''}

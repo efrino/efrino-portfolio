@@ -86,7 +86,32 @@ function drawTable(doc, rows) {
 }
 
 export const fileInfo = id => db.prepare('SELECT * FROM files WHERE id = ?').get(String(id));
-export const filePath = id => `${FILES}/${id}.pdf`;
+const EXT = id => (fileInfo(id)?.name.match(/\.(docx|pdf)$/i)?.[1] || 'pdf').toLowerCase();
+export const filePath = id => `${FILES}/${id}.${EXT(id)}`;
+export const fileType = id => EXT(id) === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf';
+
+// --- Word (.docx) from the same simple markdown, so recruiters/portals that want Word get an editable file
+export async function makeDocx({ title, filename, content }) {
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle } = await import('docx');
+  const id = crypto.randomUUID();
+  const name = `${String(filename || title || 'dokumen').replace(/[^\w\- ]+/g, '').trim().slice(0, 60) || 'dokumen'}.docx`;
+  const runs = (t, o = {}) => String(t).split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map(x => /^\*\*.*\*\*$/.test(x) ? new TextRun({ text: x.slice(2, -2), bold: true, ...o }) : new TextRun({ text: x, ...o }));
+  const kids = [];
+  for (const raw of tidy(content).replace(/\r/g, '').split('\n')) {
+    const line = raw.trimEnd();
+    if (!line.trim() || /^\s*\|?\s*:?-{2,}/.test(line)) continue;
+    if (/^# /.test(line)) kids.push(new Paragraph({ children: [new TextRun({ text: line.slice(2), bold: true, size: 36, color: '1B1340' })], spacing: { after: 60 } }));
+    else if (/^## /.test(line)) kids.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: line.slice(3), bold: true, size: 26, color: '3B2FA0' })], spacing: { before: 200, after: 80 }, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D8D4F5', space: 2 } } }));
+    else if (/^### /.test(line)) kids.push(new Paragraph({ children: runs(line.slice(4), { bold: true }), spacing: { before: 80 } }));
+    else if (/^\s*[-*•] /.test(line)) kids.push(new Paragraph({ bullet: { level: 0 }, children: runs(line.replace(/^\s*[-*•] /, '')), spacing: { after: 40 } }));
+    else kids.push(new Paragraph({ children: runs(line.replace(/^> /, '').replace(/\|/g, ' ')), spacing: { after: 100 } }));
+  }
+  const doc = new Document({ creator: 'Efrino Wahyu Eko Pambudi', title, styles: { default: { document: { run: { font: 'Calibri', size: 21 } } } },
+    sections: [{ properties: { page: { margin: { top: 1000, bottom: 1000, left: 1100, right: 1100 } } }, children: kids }] });
+  fs.writeFileSync(`${FILES}/${id}.docx`, await Packer.toBuffer(doc));
+  db.prepare('INSERT INTO files (id, name) VALUES (?, ?)').run(id, name);
+  return { file_id: id, name, url: `/api/files/${id}` };
+}
 
 // --- email (staged until confirmed)
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
