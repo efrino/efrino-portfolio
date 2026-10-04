@@ -182,23 +182,63 @@ const md = t => {
 const inl = h => h.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/(^|\s|>)#(\d+)\b/g, '$1<a href="#" data-item="$2">#$2</a>');
 function metaHtml(meta) {
   if (!meta) return '';
-  const files = (meta.files || []).map(f => `<a class="btn" href="${esc(f.url)}" target="_blank" rel="noopener">📄 ${esc(f.name)}</a>`).join('');
+  const files = dlBtns(meta.files || []);
   const acts = (meta.actions || []).map(a => a.status && a.status !== 'pending' ? `<div class="act"><b>${{ done: '✅ Email terkirim', drafted: '📥 Tersimpan di Draf Gmail' }[a.status] || '✖️ Email dibatalkan'}</b><div class="meta">Ke: ${esc(a.to)} · ${esc(a.subject)}</div></div>` : `<div class="act" data-act="${esc(a.id)}"><b>✉️ Email menunggu konfirmasi</b><div class="meta">Ke: ${esc(a.to)}<br>Subjek: ${esc(a.subject)}${a.attachment ? `<br>Lampiran: ${esc(a.attachment)}` : ''}</div>
     <details><summary>Lihat isi</summary><pre>${esc(a.body)}</pre></details><div class="actions"><button class="btn primary" data-do="confirm">Kirim email</button><button class="btn" data-do="draft">📥 Simpan ke Draf Gmail</button><button class="btn" data-do="cancel">Batal</button></div></div>`).join('');
   const used = (meta.used || []).length ? `<div class="src">🛠️ ${meta.used.join(', ')}</div>` : '';
   return `${files ? `<div class="actions" style="margin-top:8px">${files}</div>` : ''}${acts}${used}`;
 }
+
+// --- CV & cover letter tailored to a job description, saved straight to the phone
+const blobs = new Map(); // url -> File, prefetched so the tap can open the iOS share sheet immediately
+async function prefetch(f) { if (blobs.has(f.url)) return; const r = await fetch(f.url + '?dl=1'); if (r.ok) blobs.set(f.url, new File([await r.blob()], f.name, { type: 'application/pdf' })); }
+async function savePdf(f) {
+  const file = blobs.get(f.url);
+  if (file && navigator.canShare?.({ files: [file] }) && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { await navigator.share({ files: [file], title: f.name }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = file ? URL.createObjectURL(file) : f.url + '?dl=1'; a.download = f.name; document.body.append(a); a.click(); a.remove();
+}
+const dlBtns = (files, primary) => files.map((f, i) => `<button type="button" class="btn ${primary && i === 0 ? 'primary' : ''} dl" data-url="${esc(f.url)}" data-name="${esc(f.name)}">⬇️ ${esc(f.name)}</button>`).join('');
+function bindDl(root) { root.querySelectorAll('.dl').forEach(b => { const f = { url: b.dataset.url, name: b.dataset.name }; prefetch(f).catch(() => {}); b.onclick = () => savePdf(f); }); }
+async function tailorCard(el) {
+  const opts = [...await api('items?track=all&status=shortlist').catch(() => []), ...await api('items?track=career&status=new').catch(() => [])].slice(0, 25);
+  el.innerHTML = `<form class="card tailor" id="tf"><div><b style="font-size:17px">🎯 CV & Cover Letter sesuai lowongan</b><p class="sub">Tempel job description (atau pilih dari Radar). AI menyusun ulang CV & surat lamaran dari profil Anda tanpa mengarang fakta, lalu PDF langsung bisa disimpan ke HP.</p></div>
+    <select name="item"><option value="">Pilih peluang dari Radar (opsional)</option>${opts.map(i => `<option value="${i.id}">${esc(`[${i.score ?? '?'}] ${i.title} · ${i.company || '-'}`).slice(0, 90)}</option>`).join('')}</select>
+    <textarea name="jd" rows="5" placeholder="Tempel job description di sini… (dari LinkedIn: buka lowongan → salin teks 'About the job')"></textarea>
+    <div class="actions"><select name="lang" style="width:auto"><option value="auto">Bahasa: ikuti lowongan</option><option value="id">Bahasa Indonesia</option><option value="en">English</option></select>
+      <button class="btn primary" id="tgo">✨ Buat CV + Cover Letter</button></div>
+    <div id="tout"></div>
+    <details id="trecent"><summary>Dokumen terakhir</summary><div class="actions" style="margin-top:8px"></div></details></form>`;
+  const recent = async () => { const fs = await api('files').catch(() => []); const box = el.querySelector('#trecent .actions'); box.innerHTML = fs.length ? dlBtns(fs) : '<span class="sub">Belum ada.</span>'; el.querySelector('#trecent').ontoggle = e => e.target.open && bindDl(box); };
+  recent();
+  el.querySelector('#tf').onsubmit = async e => { e.preventDefault(); const f = e.target, b = el.querySelector('#tgo'), out = el.querySelector('#tout');
+    if (!f.item.value && f.jd.value.trim().length < 80) return toast('Tempel job description atau pilih peluang dulu');
+    b.disabled = true; b.textContent = 'Menyusun… (±30 detik)'; out.innerHTML = '';
+    try {
+      const r = await api('tailor', { method: 'POST', body: { jd: f.jd.value, itemId: f.item.value || null, lang: f.lang.value } });
+      out.innerHTML = `<div class="tres"><div class="tscore"><b>${r.match}%</b><span>cocok · ${esc(r.role || '')}${r.company ? ' @ ' + esc(r.company) : ''}</span></div>
+        <div class="actions big">${dlBtns(r.files, true)}</div>
+        <p class="sub">Di iPhone: tekan tombol → <b>Simpan ke File</b> (atau kirim ke WhatsApp/Email).</p>
+        ${r.keywords_hit.length ? `<div><span class="sub">Kata kunci terpenuhi</span><div class="chips">${r.keywords_hit.map(k => `<span class="chip ok">${esc(k)}</span>`).join('')}</div></div>` : ''}
+        ${r.gaps.length ? `<div><span class="sub">Belum terlihat di profil (tidak dimasukkan ke CV)</span><div class="chips">${r.gaps.map(k => `<span class="chip gap">${esc(k)}</span>`).join('')}</div></div>` : ''}
+        ${r.tips.length ? `<ul class="tips">${r.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+        <div class="actions"><button type="button" class="btn" id="tcopy">📋 Salin teks cover letter</button></div></div>`;
+      bindDl(out); el.querySelector('#tcopy').onclick = () => { navigator.clipboard.writeText(r.cover_text.replace(/\*\*/g, '').replace(/^#+ /gm, '')); toast('Disalin'); };
+      recent();
+    } catch (err) { if (err.message !== 'login') toast(err.message); }
+    b.disabled = false; b.textContent = '✨ Buat CV + Cover Letter'; };
+}
 const PROMPTS = ['Buatkan cover letter untuk peluang teratas dan simpan ke draf Gmail saya', 'Buatkan PDF CV 1 halaman untuk peluang teratas', 'Ingatkan saya di WhatsApp untuk follow-up besok', '3 peluang mana yang harus saya kejar dulu minggu ini, dan kenapa?', 'Lamaran mana yang perlu di-follow-up? Tuliskan pesannya.', 'Bantu saya siapkan jawaban interview untuk peluang teratas.', 'Tulis posting LinkedIn tentang pengalaman PPIC Smart Planner (tanpa data rahasia).', 'Berapa harga yang pantas untuk proyek aplikasi inventory gudang 6 minggu?'];
 async function chat() {
   const hist = await api('assistant');
-  $('#list').innerHTML = `<div class="card chatbox"><div id="log" class="log">${hist.length ? '' : `<div class="msg a">Halo Efrino 👋 Saya tahu profil Anda, peluang terbaik, shortlist, lamaran terkirim, dan leads jasa. Mau mulai dari mana?</div>`}</div>
+  $('#list').innerHTML = `<div id="tailor"></div><div class="card chatbox"><div id="log" class="log">${hist.length ? '' : `<div class="msg a">Halo Efrino 👋 Saya tahu profil Anda, peluang terbaik, shortlist, lamaran terkirim, dan leads jasa. Mau mulai dari mana?</div>`}</div>
     <div class="chips" id="qp">${PROMPTS.map(q => `<button type="button" class="qp">${esc(q)}</button>`).join('')}</div>
     <form id="cf" class="cform"><textarea id="ct" rows="2" placeholder="Tanya apa saja… (Enter kirim, Shift+Enter baris baru). Sebut #id untuk peluang tertentu."></textarea><button class="btn primary">Kirim</button></form>
     <div class="actions"><button class="btn" id="creset" type="button">Mulai percakapan baru</button></div></div>`;
   const log = $('#log');
   const add = (role, text, meta) => { const d = document.createElement('div'); d.className = `msg ${role === 'user' ? 'u' : 'a'}`; d.innerHTML = role === 'user' ? esc(text).replace(/\n/g, '<br>') : md(text) + metaHtml(meta);
     if (role !== 'user') { const c = document.createElement('button'); c.className = 'copy'; c.textContent = 'Salin'; c.onclick = () => { navigator.clipboard.writeText(text); toast('Disalin'); }; d.append(c); }
-    log.append(d); log.scrollTop = log.scrollHeight; return d; };
+    bindDl(d); log.append(d); log.scrollTop = log.scrollHeight; return d; };
+  tailorCard($('#tailor'));
   hist.forEach(m => add(m.role, m.content, m.meta));
   log.addEventListener('click', async e => {
     const d = e.target.closest('[data-do]');
@@ -217,7 +257,6 @@ async function chat() {
   $('#ct').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send($('#ct').value); } };
   document.querySelectorAll('.qp').forEach(b => b.onclick = () => send(b.textContent));
   $('#creset').onclick = async () => { await api('assistant', { method: 'DELETE' }); chat(); };
-  $('#ct').focus();
-}
+  }
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

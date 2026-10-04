@@ -6,6 +6,7 @@ import { db, getSetting, setSetting } from './db.js';
 import { runAll, score, draft, addManual, addShared, completeItem, extractFromImages, digest, profile, importLeads } from './engine.js';
 import { waStart, waStatus, waLogout, waSend, waBoot } from './wa.js';
 import { ask, history, reset } from './assistant.js';
+import { tailor, recentFiles } from './tailor.js';
 import { fileInfo, filePath, confirmAction, cancelAction, actionToDraft, gmailDraft } from './tools.js';
 
 const PASSWORD = process.env.RADAR_PASSWORD || '';
@@ -70,9 +71,11 @@ const server = http.createServer(async (req, res) => {
       if (p === 'digest' && req.method === 'POST') { const sent = await digest({ force: true }); return json(res, sent.length ? 200 : 400, sent.length ? { sent } : { error: 'Belum ada kanal aktif (Telegram/WhatsApp) atau belum ada peluang.' }); }
       if (p === 'assistant' && req.method === 'GET') return json(res, 200, history());
       if (p === 'assistant' && req.method === 'POST') { const b = await body(req); try { return json(res, 200, await ask(b.message)); } catch (e) { return json(res, 502, { error: e.message.startsWith('4') || e.message.startsWith('5') ? 'AI sedang sibuk/limit. Coba lagi sebentar.' : e.message }); } }
+      if (p === 'tailor' && req.method === 'POST') { const b = await body(req, 1e6); try { return json(res, 200, await tailor({ jd: b.jd, itemId: b.itemId, lang: b.lang })); } catch (e) { return json(res, /^[45]\d\d/.test(e.message) ? 502 : 400, { error: /^[45]\d\d/.test(e.message) ? 'AI sedang sibuk/limit. Coba lagi sebentar.' : e.message }); } }
+      if (p === 'files' && req.method === 'GET') return json(res, 200, recentFiles());
       const fm = p.match(/^files\/([0-9a-f-]{36})$/);
       if (fm && req.method === 'GET') { const f = fileInfo(fm[1]); if (!f) return json(res, 404, { error: 'File tidak ada.' });
-        res.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': `inline; filename="${f.name.replace(/"/g, '')}"` }); return fs.createReadStream(filePath(f.id)).pipe(res); }
+        res.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': `${url.searchParams.has('dl') ? 'attachment' : 'inline'}; filename="${f.name.replace(/"/g, '')}"` }); return fs.createReadStream(filePath(f.id)).pipe(res); }
       const am = p.match(/^actions\/([0-9a-f-]{36})\/(confirm|cancel|draft)$/);
       if (am && req.method === 'POST') { try { if (am[2] === 'confirm') return json(res, 200, await confirmAction(am[1])); if (am[2] === 'draft') return json(res, 200, await actionToDraft(am[1])); return json(res, 200, { ok: cancelAction(am[1]) }); } catch (e) { return json(res, 409, { error: e.message }); } }
       if (p === 'assistant' && req.method === 'DELETE') { reset(); return json(res, 200, { ok: true }); }

@@ -51,3 +51,13 @@ textarea:focus, input.in:focus { border-color: var(--accent); }
 .steps { padding-left: 20px; display: grid; gap: 6px; color: #c9ccd8; font-size: 14px; }
 .steps code, .tok { font-family: var(--mono); font-size: 12.5px; background: rgba(0,0,0,.35); padding: 2px 6px; border-radius: 6px; word-break: break-all; }
 @media (max-width: 640px) { .top .actions .btn { padding: 8px 10px; font-size: 13px; } .stats { grid-template-columns: repeat(2, 1fr); } }
+
+.tailor { border-color: rgba(140,120,255,.45); background: linear-gradient(160deg, rgba(124,92,255,.14), rgba(0,200,255,.05)), var(--card); }
+.tailor .sub, .sub { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+.tailor select, .tailor textarea { width: 100%; }
+.tres { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+.tscore { display: flex; align-items: baseline; gap: 10px; } .tscore b { font-size: 34px; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; } .tscore span { color: var(--muted); }
+.actions.big .btn { min-height: 48px; font-size: 15px; flex: 1 1 240px; justify-content: center; }
+.chip { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; border: 1px solid var(--line); margin: 4px 4px 0 0; }
+.chip.ok { border-color: rgba(60,220,140,.5); color: #7ef0b3; } .chip.gap { border-color: rgba(255,170,80,.5); color: #ffc58a; }
+.tips { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
