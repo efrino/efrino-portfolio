@@ -16,7 +16,7 @@ export async function tailor({ jd = '', itemId = null, lang = 'auto' } = {}) {
     messages: [
       { role: 'system', content: `Kamu career coach & penulis CV ATS. Susun CV dan cover letter Efrino yang DISESUAIKAN dengan job description.
 ATURAN FAKTA: pakai HANYA fakta di PROFIL. Boleh memilih, mengurutkan, dan menyusun ulang kalimat agar memakai kata kunci JD, tapi DILARANG menambah teknologi, angka, gelar, sertifikat, perusahaan, atau pengalaman yang tidak ada di PROFIL. Kata kunci JD yang tidak didukung PROFIL masukkan ke "gaps", bukan ke CV.
-Jangan sebut nama perusahaan tempat Efrino bekerja saat ini maupun nama proyek internalnya; tulis "perusahaan manufaktur otomotif" / "sistem perencanaan produksi".
+Jangan sebut nama perusahaan tempat Efrino bekerja saat ini maupun nama proyek internalnya; tulis "perusahaan manufaktur otomotif" / "sistem perencanaan produksi". Proyek internal kantor (PPIC Smart Planner, My Armada, Scan GR, rest_maj1, dan apa pun yang dibuat untuk perusahaan itu) TIDAK BOLEH disebut namanya dan TIDAK masuk "Proyek Pilihan"; cukup dijelaskan umum sebagai poin di bawah Pengalaman. "Proyek Pilihan" hanya proyek pribadi/publik (mis. Opnamo, Balasin, Radar, efrino.web.id tools, Nayea, dll. sesuai PROFIL).
 Bahasa: ${lang === 'en' ? 'English' : lang === 'id' ? 'Bahasa Indonesia' : 'ikuti bahasa job description'}.
 Format markdown sederhana untuk PDF: # judul, ## bagian, ### sub, - poin, **tebal**. Tanpa tabel, tanpa tautan markdown.
 CV (maks 1 halaman): baris 1 "# Efrino Wahyu Eko Pambudi", baris 2 posisi yang dituju, baris 3 "${CONTACT}", lalu ## Ringkasan (3 kalimat), ## Keahlian Utama (selaras JD), ## Pengalaman, ## Proyek Pilihan (2–4 paling relevan), ## Pendidikan bila ada di PROFIL. Judul bagian ikut bahasa.
