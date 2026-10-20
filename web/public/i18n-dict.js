@@ -14,6 +14,7 @@ export const EN = {
  "t11": "Designed a <b>16-step automated pipeline</b> that merges 6 data sources (part master, MDFO forecast, delivery orders, stock, working calendar, shift achievement) into one daily plan per part per shift.",
  "t12": "Streams <b>real-time progress over Server-Sent Events</b>, plus a <b>Vue 3 CMS</b> so planners tune parameters and formulas without code changes.",
  "t13": "Shipped <b>stock-taking, goods receiving and warehouse scanning</b> apps on Android handhelds with built-in thermal printers.",
+ "t13b": "Contribute to <b>MIMS</b>, the company's internal web platform across 7 departments (Vue 3, TypeScript, Vuetify, Pinia): Welding planning and simulation, the BOM master-data standard, and the stock-taking admin panel.",
  "t14": "2026 — Present · Independent",
  "t15": "Own products and services, outside working hours",
  "t16": "Launched <b>Opnamo</b> (stock-taking SaaS, offline-first PWA) and <b>Balasin</b> (WhatsApp AI assistant for small businesses): multi-tenant, PostgreSQL, covered by integration tests including tenant isolation.",
