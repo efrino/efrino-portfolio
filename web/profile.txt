@@ -10,6 +10,7 @@ EXPERIENCE:
   * Designed a 16-step automated planning pipeline that merges 6 data sources (part master, MDFO forecast, delivery orders, stock, working calendar, shift achievement) into one daily plan per part per shift.
   * Streams real-time pipeline progress over Server-Sent Events; built a Vue 3 CMS so planners tune parameters and formulas without code changes.
   * Shipped shop-floor apps for stock-taking, goods receiving and warehouse scanning on Android handhelds with built-in thermal printers.
+  * Contributes to MIMS (MAJ Integrated Management System), the company's internal web platform for 7 departments (Stamping, Welding, Logistics, PCD, HR, Marketing, Finance), built with Vue 3, TypeScript, Vuetify and Pinia. His parts: Welding production planning and simulation (SSE pipeline progress), the planning-parameter CMS, the Welding BOM / master-data hierarchy standard, and the stock-taking admin panel. Team project; source is internal.
 - External Auditor Intern, KAP Gatot Permadi, Azwir & Abimail (Dec 2023 to Jan 2024): financial statement verification, document tracing, data reconciliation.
 
 FEATURED PROJECTS:
@@ -18,14 +19,14 @@ FEATURED PROJECTS:
 - Meca Learning: Flutter training app for mechanics (Riverpod, Supabase, Firebase, Hive, Codemagic iOS builds): modules, quizzes, error-code lookup, offline Google Drive content, push notifications.
 - Meca Admin Console: React admin for Meca Learning with Excel bulk import.
 - My Armada: Flutter warehouse scan-in/scan-out, stock-taking, role-based permissions.
-- Scan GR: offline-ready goods-receiving scanner.
+- GR Scanner (internal): Flutter goods-receipt scanner on handhelds. Deduplicated offline queue with one-tap sync, and automatic failover from the main HTTPS server to a local LAN server (6 s / 8 s timeouts, 60 s circuit breaker), covered by unit tests and verified on H10 handhelds.
 - rest_maj1: CodeIgniter + JWT + MySQL REST backend for inventory, Andon, kanban, maintenance, forecasting and SAP integration.
 - mechanic-manual-api: Express + MySQL, JWT, Helmet, rate limiting, offline sync.
 - qc_model: FastAPI + PyTorch DETR object detection for stamping-part defect detection.
 - Internal: AI WhatsApp commerce bot (Node.js, Baileys, Supabase, Midtrans, Groq/Gemini/OpenRouter fallback); YouTube Shorts automation (Python, FFmpeg, TTS, YouTube API).
 
 INDEPENDENT PRODUCTS (2026, side projects outside working hours, all live on his own VPS):
-- Opnamo (opnamo.efrino.web.id): multi-tenant stock-taking SaaS. QR tags, phone camera scanning as an offline-first PWA with idempotent sync, variance report in rupiah, Excel import/export, A4/58mm label printing. Node.js, Express, PostgreSQL, integration tests incl. tenant isolation.
+- Opnamo (opnamo.efrino.web.id, code: github.com/efrino/opnamo): multi-tenant stock-taking SaaS. QR tags, phone camera scanning as an offline-first PWA with idempotent sync, variance report in rupiah, Excel import/export, A4/58mm label printing. Node.js, Express, PostgreSQL, integration tests incl. tenant isolation.
 - Balasin (balasin.efrino.web.id): WhatsApp AI assistant SaaS for small businesses. Answers from the shop's catalog/FAQ, books orders only after explicit customer confirmation with server-side pricing, human handoff, opening hours. Node.js, PostgreSQL, Baileys, Groq/Gemini.
 - Radar: personal AI agent that monitors public job feeds, scores fit with an AI rubric plus a deterministic location check, and has a tool-calling assistant (PDF generation, confirmed email, WhatsApp/Telegram reports). PWA with iOS Shortcut sharing.
 - Efrino Tools (tools.efrino.web.id): five in-browser tools (AI background remover via WebGPU/WASM, 3D maker, PDF merge, image compressor, QR generator), SEO-optimised.
